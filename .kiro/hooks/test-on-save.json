@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Test on Save",
+      "trigger": "PostFileSave",
+      "description": "Runs the Vitest suite whenever domain/storage TypeScript files under src/ are saved, catching regressions in the pure scoring/grading/storage logic immediately.",
+      "matcher": "src/.*\\.(ts|tsx)$",
+      "action": {
+        "type": "command",
+        "command": "npx vitest run"
+      }
+    }
+  ]
+}

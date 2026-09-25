@@ -24,7 +24,16 @@ Log of Kiro features used during this project, for the final submission form.
   [tasks.md](kiro-spec://create?featureName=daily-challenge&documentType=tasks)
 
 ## Hooks
-- (not yet used)
+
+### Lesson 3: Hooks - Test on Save
+- Added `.kiro/hooks/test-on-save.json`, a `PostFileSave` hook that runs our Vitest suite
+  automatically whenever domain/storage source files change.
+- Trigger: `PostFileSave`
+- Matcher: `src/.*\.(ts|tsx)$` (any TypeScript/TSX file under `src/`, covering domain, storage,
+  and UI code)
+- Action: `command` -> `npx vitest run`
+- Why: catches regressions in the pure scoring/grading/storage engines the moment they're saved,
+  instead of waiting for a manual test run or CI.
 
 ## Vibe / Agentic coding
 - (not yet used)
