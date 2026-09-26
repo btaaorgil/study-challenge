@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Daily Study Challenge is a client-side-only single-page app. There is no backend, no auth, no network dependency for core functionality. All state (lessons, generated daily challenges, and attempts) lives in the browser via IndexedDB, accessed exclusively through a `Storage_Layer` module.
+Studyy is a client-side-only single-page app. There is no backend, no auth, no network dependency for core functionality. All state (lessons, generated daily challenges, and attempts) lives in the browser via IndexedDB, accessed exclusively through a `Storage_Layer` module.
 
 Phase 1 scope, matching requirements.md:
 - Validate and store `Lesson` content structured as 4 `Lesson_Section`s of `Concept`s.
@@ -18,7 +18,7 @@ Question content for Phase 1 is **static and authored by hand** inside the Sampl
 
 | Concern | Choice | Why |
 |---|---|---|
-| Language | TypeScript | Type-safety for the data model (Lesson/Question/Attempt shapes) catches structural mistakes at compile time, which matters a lot given how strict the EARS acceptance criteria are about shape (exactly 4 sections, exactly 4 options, etc.). |
+| Language | TypeScript | Type-safety for the data model (Lesson/Question/Attempt shapes) catches structural mistakes at compile time, which matters a lot given how strict the EARS acceptance criteria are about shape (section-count bounds, option counts per difficulty, etc.). |
 | Build tool | Vite | Fast dev server and build, zero-config for a small SPA, minimal setup time — appropriate for a hackathon-scoped submission. |
 | UI framework | React 18 (function components + hooks) | Most conventional choice for a small SPA; huge ecosystem, easy to reason about component state (current question index, selected option, grading result) with `useState`/`useReducer`. No routing library needed — this is effectively a single view. |
 | IndexedDB access | Hand-written thin wrapper (`db.ts`) around the native `indexedDB` API, using small `promisify` helpers internally (no external runtime dependency) | Steering (`storage.md`) requires a dedicated data-access layer as the *only* IndexedDB touchpoint. Keeping it dependency-free avoids adding a library just to wrap ~5 object stores worth of CRUD, and keeps the bundle small. |
@@ -137,7 +137,7 @@ A single statically authored, exported `Lesson` object, bundled into the app at 
 export const SAMPLE_LESSON: Lesson = {
   id: "sample-lesson",
   title: "…",
-  sections: [ /* exactly 4 Lesson_Section objects, hand-authored */ ],
+  sections: [ /* 4 Lesson_Section objects (one per topic), hand-authored */ ],
 };
 ```
 
@@ -149,12 +149,12 @@ export const SAMPLE_LESSON: Lesson = {
 ```ts
 export interface LessonValidationResult {
   valid: boolean;
-  errors: string[]; // e.g. "expected 4 sections, got 3"
+  errors: string[]; // e.g. "expected 1-12 sections, got 0"
 }
 export function validateLesson(lesson: Lesson): LessonValidationResult;
 ```
 
-Checks, in order: exactly 4 sections; each section's trimmed title (1-100 chars), trimmed explanation (1-2000 chars), and concept count (1-20). Returns all violations, not just the first, so callers can surface a full rejection reason (Req 1.4/1.5).
+Checks, in order: 1-12 sections (one per topic, Phase 2); each section's trimmed title (1-100 chars), trimmed explanation (1-2000 chars), and concept count (1-20). Returns all violations, not just the first, so callers can surface a full rejection reason (Req 1.4/1.5).
 
 ### Domain: `selectActiveLesson` (`src/domain/lesson.ts`)
 
@@ -185,7 +185,7 @@ export function selectQuestions(
 2. Otherwise call the pure `selectQuestions(lesson, seed, 5)`, wrap in a `DailyChallenge`, `storage.putDailyChallenge(...)`, and return it.
 
 `selectQuestions` (pure, deterministic given the same `seed`):
-1. Flatten all `Concept`s across the lesson's 4 sections into one ordered pool, each tagged with its owning `sectionId`.
+1. Flatten all `Concept`s across the lesson's sections into one ordered pool, each tagged with its owning `sectionId`.
 2. Filter out concepts that cannot produce a valid question (Req 5.4): a concept must have a non-empty explanation-or-quote source and a derivable `sourceQuote` that is an exact substring of its section's `explanation` or the concept's own text.
 3. Deterministically shuffle the filtered pool using a seeded PRNG (seed = `dateKey + ":" + lesson.id`) — same seed always yields the same order, so regeneration is reproducible without needing storage (defense in depth for Req 3.5, though storage already short-circuits re-generation).
 4. If pool size >= 5: take the first 5 distinct concepts (Req 3.2).
@@ -279,7 +279,7 @@ export interface LessonSection {
 export interface Lesson {
   id: string;
   title: string;
-  sections: LessonSection[]; // exactly 4, order = authored order
+  sections: LessonSection[]; // 1-12 (one per topic), order = authored order
 }
 
 export interface AnswerOption {
@@ -292,7 +292,7 @@ export interface Question {
   sectionId: string;         // the one LessonSection this question traces back to
   conceptId: string;
   prompt: string;
-  options: AnswerOption[];   // exactly 4
+  options: AnswerOption[];   // 4 (Normal/Hard) or 3 (Easy)
   correctOptionId: string;   // one of options[].id
   explanation: string;       // non-empty
   sourceQuote: string;       // non-empty, exact substring of section content
@@ -322,7 +322,7 @@ This maps directly onto the requirements Glossary: `Lesson` → `LessonSection` 
 
 ### Property 1: Lesson section-count validity
 
-For any Lesson with an arbitrary number of sections, `validateLesson` reports the lesson valid with respect to section count if and only if it has exactly 4 sections, and reports it invalid (with a section-count error) otherwise.
+For any Lesson with an arbitrary number of sections, `validateLesson` reports the lesson valid with respect to section count if and only if it has 1-12 sections, and reports it invalid (with a section-count error) otherwise.
 
 **Validates: Requirements 1.1, 1.4**
 
@@ -334,7 +334,7 @@ For any Lesson_Section with an arbitrary (including empty, whitespace-only, boun
 
 ### Property 3: Section order is preserved on load
 
-For any Lesson authored with its 4 sections in a given order, loading that lesson (round-trip through construction/parsing) returns its sections in that same order.
+For any Lesson authored with its sections in a given order, loading that lesson (round-trip through construction/parsing) returns its sections in that same order.
 
 **Validates: Requirements 1.3**
 
@@ -346,7 +346,7 @@ For any set of stored lessons (including the empty set, sets containing only inv
 
 ### Property 5: Generated Daily_Challenge has the required shape
 
-For any valid Lesson, `selectQuestions` (via `getOrCreateDailyChallenge`) produces exactly 5 questions, each with exactly 4 answer options, each with exactly one option marked as the correct option.
+For any valid Lesson, `selectQuestions` (via `getOrCreateDailyChallenge`) produces exactly 5 questions, each with exactly 4 answer options at the default Normal difficulty (3 at Easy), each with exactly one option marked as the correct option.
 
 **Validates: Requirements 3.1, 3.3, 3.4**
 
@@ -364,7 +364,7 @@ For any valid Lesson and calendar day, calling `getOrCreateDailyChallenge` twice
 
 ### Property 8: Grading is synchronous and reports correctness against the true correct option
 
-For any generated Question and any of its 4 option ids submitted, `gradeAttempt` returns synchronously (no pending promise) with `isCorrect` equal to `(submittedOptionId === question.correctOptionId)` and `correctOptionId` always equal to the question's correct option id, regardless of which option was submitted.
+For any generated Question and any of its option ids submitted, `gradeAttempt` returns synchronously (no pending promise) with `isCorrect` equal to `(submittedOptionId === question.correctOptionId)` and `correctOptionId` always equal to the question's correct option id, regardless of which option was submitted.
 
 **Validates: Requirements 4.1, 4.2**
 
@@ -452,3 +452,78 @@ test("score counts only the chronologically-first same-day attempt per question"
 Custom `fast-check` arbitraries are built for: `Lesson`/`LessonSection`/`Concept` (with controllable boundary violations for Properties 1-2), pools of concepts of varying size (Property 6), `DailyChallenge` + `Attempt[]` combinations with adversarial timestamps/ordering/out-of-scope entries (Property 11), and round-trippable storage payloads via `fake-indexeddb` (Property 15).
 
 Each property from the Correctness Properties section is implemented as a single property-based test (not split across multiple tests), consistent with the one-property-one-test convention.
+
+## Phase 2 Design: Upload-first flow, topic detection, difficulty, Test Yourself
+
+Covers Requirements 11-14. Still local-only: no backend, no LLM, no runtime network call.
+
+### App flow (`src/App.tsx`)
+
+```mermaid
+flowchart LR
+    Start([App loads]) --> Init[storage.init + read activeLessonId, difficulty]
+    Init -->|no active lesson| Upload[AddLessonView: paste / open file]
+    Upload -->|Turn into quizzes| Preview[Preview: Found N topics]
+    Upload -->|Try the sample| Home
+    Preview -->|Start studying| Home[LessonDashboard]
+    Init -->|active lesson| Home
+    Home -->|Daily Challenge| Daily[ChallengeView: 5 questions]
+    Home -->|Test Yourself| Exam[ExamView: every topic]
+    Daily --> Home
+    Exam --> Home
+```
+
+Screens are plain React state (`"upload" | "home" | "daily" | "exam"`); no router. `TopNav` holds the Studyy brand, a lesson switcher (only when there are 2+ lessons) and "New lesson".
+
+### Lesson_Importer (`src/domain/importLesson.ts`, helpers in `src/domain/text.ts`)
+
+1. Parse lines. A line is a heading if it is a markdown heading, a "Chapter/Part/Topic N" line, a short "Label:" line over body text, a numbered title over a paragraph, or a short standalone title line (<= 8 words, no end punctuation) over body text. A single leading `#` above `##` headings becomes the lesson title.
+2. If any heading has body text: one topic per heading (text before the first heading becomes "Overview" when it has 2+ sentences, otherwise merges into the first topic).
+3. Otherwise group by subject: consecutive paragraphs stay together when the next one points back ("It…", "This…"), mentions the current subject, or shares enough key words; a paragraph that opens by defining a different subject ("Mitosis is…") starts a new topic. A single wall of text is cut before a sentence that shares no key words with the topic so far *and* is confirmed by the sentence after it.
+4. Tidy: 1-sentence un-headed groups fold into their most similar neighbour; more than 12 topics merge the most similar adjacent pairs; topics over 20 points split into numbered parts.
+5. Titles: the heading, else the opening sentence's subject ("The French Revolution began…" → "French Revolution"), else the group's most distinctive words.
+6. Concepts are the learner's sentences/bullets verbatim (`sourceQuote === text`).
+
+### Question styles and difficulty (`src/domain/challenge.ts`)
+
+| Style | Built from | Used |
+|---|---|---|
+| Fill-in-the-blank | Blank a key term in a concept's sentence; options are the term plus other lesson terms | Normal/Hard first choice, Easy fallback |
+| Topic match | "Which of these comes from <topic>?"; wrong options are statements from other topics | Easy first choice, Normal/Hard fallback |
+| Statement pick | Original Phase 1 style | Last resort (no key terms and only one topic) |
+
+Key terms come from `extractTerms` (numbers, proper-noun runs, content words; weak verbs/adverbs and contractions skipped), re-weighted per lesson (+2 when the lesson mentions the term in 2+ concepts, +3 when it names the topic). Distractor ranking:
+
+- **Easy** (3 options): other topics and other term kinds first, topic named in the prompt.
+- **Normal** (4 options): same term kind, more meaningful terms first, lesson-wide.
+- **Hard** (4 options): the most specific term is blanked; same kind + same topic + similar length first; no topic hint.
+
+Distractors never appear in the sentence and never equal the answer ignoring a plural ending. `getOrCreateDailyChallenge(dateKey, lesson, storage, difficulty)` regenerates for a new difficulty only while today's challenge has no Attempts; after that the day is locked (Req 11.6). Non-normal seeds append the difficulty so question ids never collide across difficulties.
+
+### Test Yourself (`buildExam`, `src/ui/ExamView.tsx`)
+
+`buildExam(lesson, seed, difficulty, max = 20)` shuffles each topic's usable concepts, then takes them round-robin across topics until every concept is used once or `max` is reached (min 5, reusing only for tiny lessons). Each run gets a fresh seed. Grading reuses `submitAnswer`/`gradeAttempt`; answers stay in component state and are never written as Attempts. On finish an `ExamResult` (totals + per-topic breakdown) is saved in the `meta` store under `examResults` (bounded to the last 200).
+
+### Storage additions (`src/storage/db.ts`)
+
+New `meta` keys, no schema bump: `difficulty` (validated on read) and `examResults`. Both have in-memory fallbacks like every other operation.
+
+### UI additions
+
+- `LessonDashboard`: hero (title, topic count, difficulty picker), two action cards (Daily Challenge status, Test Yourself last/best), a topic card per section (excerpt, key terms, cited history fact), and the calendar.
+- `InsightCard`: side panel beside each question. Cited fact when the topic has one; otherwise key terms and a recap from the notes. Locked until answered on Normal/Hard, visible as a hint on Easy.
+- `StudyCalendarView`: Monday-first month table, cells tinted by score tier with an exam dot, `aria-label` per day, streak/days studied/best score.
+
+### Correctness properties (Phase 2)
+
+### Property 16: Topic detection keeps the learner's words
+For any imported lesson, every Concept's text is a verbatim sentence or bullet from the input and its `sourceQuote` is a substring of its text; the section count is 1-12. **Validates: Requirements 13.3-13.5**
+
+### Property 17: Options are well-formed at every difficulty
+For any seed and difficulty, every generated question has `optionCountFor(difficulty)` options, exactly one correct, and no two options equal ignoring case and a plural ending. **Validates: Requirements 3.3, 11.2, 11.5**
+
+### Property 18: Fill-in-the-blank answers are unambiguous
+For any seed at Normal/Hard, the correct option of a fill-in-the-blank question appears in the source sentence and no wrong option does. **Validates: Requirements 11.3-11.5**
+
+### Property 19: Exams cover every topic
+For any lesson, `buildExam` includes at least one question from every section with a usable concept and asks no concept twice unless the lesson has fewer than 5 usable concepts. **Validates: Requirement 12.2**

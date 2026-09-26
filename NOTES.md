@@ -1,10 +1,33 @@
-﻿# Kiro Feature Notes
+# Kiro Feature Notes
 
-Log of Kiro features used during this project, for the final submission form.
+Log of Kiro features used while building **Studyy**, for the final submission form.
 
-## Steering
-- Added `.kiro/steering/scoring.md`, `ui.md`, `storage.md` to enforce project conventions
-  (pure scoring functions, mobile/accessible UI, IndexedDB-only storage) across all sessions.
+## Where each lesson lives
+
+| Lesson | Kiro feature | Files in this repo |
+|---|---|---|
+| 1 | Feature specs (requirements -> design -> tasks) | `.kiro/specs/daily-challenge/{requirements,design,tasks}.md` |
+| 2 | Steering | `.kiro/steering/{scoring,ui,storage}.md` |
+| 3 | Hooks | `.kiro/hooks/test-on-save.json` |
+| 4 | Property-based testing | `src/**/*.property.test.ts(x)`, `src/domain/difficulty.test.ts` |
+| 5 | Powers | design-system-scaffold power (see Lesson 5 below), applied in `src/index.css` |
+| 6 | MCP | `.kiro/settings/mcp.json` (fetch server) -> cited facts in `src/data/funFacts.ts` |
+| 7 | Custom agents | `.kiro/agents/quiz-auditor.json` |
+
+## Steering (Lesson 2)
+- Added `.kiro/steering/scoring.md`, `ui.md`, `storage.md` (all `inclusion: always`) to enforce
+  project conventions (pure scoring functions, mobile/accessible UI, IndexedDB-only storage)
+  across all sessions.
+- How they shaped the build, concretely:
+  - `storage.md` ("no network calls, nothing leaves the device") is why the lesson importer and
+    topic detection are local text analysis instead of an LLM API call, why `.txt`/`.md` files are
+    read with `File.text()` in the browser, and why the MCP-researched facts are bundled as static
+    data instead of fetched at runtime.
+  - `scoring.md` ("pure, deterministic, bounded") is why difficulty changes how questions are
+    *built* but never how they're *scored*, and why the day's difficulty locks once answered.
+  - `ui.md` ("keyboard navigable, visible focus, graceful CSS") is why the redesigned answer tiles
+    keep native radio inputs under the styling, the calendar is a real `<table>` with per-day
+    `aria-label`s, and animations respect `prefers-reduced-motion`.
 
 ## Specs
 
@@ -45,7 +68,8 @@ Log of Kiro features used during this project, for the final submission form.
 - **Lesson validation & selection** - Implemented `validateLesson` and `selectActiveLesson` in
   `src/domain/lesson.ts` (Tasks 4.1, 4.4), plus the data model types in `src/domain/types.ts`
   (Task 3.1). Property-based tests in `src/domain/lesson.property.test.ts` (200 runs each):
-  - **Property 1** - a Lesson is section-count-valid if and only if it has exactly 4 sections.
+  - **Property 1** - a Lesson is section-count-valid if and only if it has exactly 4 sections
+    (Phase 2 later relaxed this to 1-12 sections, one per topic; see "Phase 2" below).
   - **Property 2** - a Lesson_Section is field-valid if and only if its trimmed title (1-100),
     trimmed explanation (1-2000), and concept count (1-20) are all in bounds, probed with
     empty/whitespace/boundary/over-length generated strings.
@@ -169,10 +193,10 @@ Log of Kiro features used during this project, for the final submission form.
 - Installed the **design-system-scaffold** power from the Kiro powers registry (MIT licensed,
   by DAE-UX) to review our interface standards and accessibility before doing the visual overhaul.
 - **Matching keywords**: the power's activation keywords include `design-system`, `accessibility`,
-  `ui`, and `theming` -- all directly hit by this task's ask ("give Astra a sleek, modern... design"
+  `ui`, and `theming` -- all directly hit by this task's ask ("give Studyy a sleek, modern... design"
   + accessibility review).
 - **Usage**: activated the power and read its `design-guidelines.md` and `ui-guidelines.md`
-  steering files (not the shadcn/Tailwind component specs, since Astra uses a hand-rolled stack per
+  steering files (not the shadcn/Tailwind component specs, since Studyy uses a hand-rolled stack per
   `.kiro/steering/ui.md`, not shadcn -- the power's *heuristics* apply regardless of the underlying
   component library). Concretely used:
   - The **"App Surfaces"** composition guidance ("Linear-style restraint: calm surface hierarchy,
@@ -187,10 +211,10 @@ Log of Kiro features used during this project, for the final submission form.
     informed the Score Badge's dynamic color tiers -- color changes are decorative reinforcement on
     top of the text/number, never instead of it.
 - Also read `default-theme.md` (shadCN "New York" theme reference) for token-naming conventions
-  (background/foreground/border/muted pairs, light+dark mode pairs) even though Astra's actual CSS
+  (background/foreground/border/muted pairs, light+dark mode pairs) even though Studyy's actual CSS
   variables are custom-named for its own plain-CSS stack rather than the shadCN contract.
 
-## Visual Overhaul: Astra restyle (Linear/Notion-inspired)
+## Visual Overhaul: Studyy restyle (Linear/Notion-inspired)
 - Replaced all unstyled raw HTML with a single global stylesheet, `src/index.css` (~370 lines),
   imported once from `main.tsx`. No CSS framework added -- plain CSS custom properties, consistent
   with the project's minimal-dependency approach.
@@ -201,7 +225,7 @@ Log of Kiro features used during this project, for the final submission form.
 - **Design tokens**: CSS custom properties for color, spacing, radius, and shadow in `:root`, with
   a `prefers-color-scheme: dark` override block -- both light and dark values defined for every
   token, per the power's "components must support both light and dark modes" rule.
-- **Header**: centered "Astra" title, today's date (formatted from `dateKey` via
+- **Header**: centered "Studyy" title, today's date (formatted from `dateKey` via
   `toLocaleDateString`), and section pills (HTTP / DOM / Git / Big-O) computed from which
   Lesson_Sections today's 5 questions actually came from -- not hardcoded, so a future custom
   lesson still renders correct pills.
@@ -223,10 +247,10 @@ Log of Kiro features used during this project, for the final submission form.
   (`npm run build`, CSS now bundled at 6.87 kB / 1.89 kB gzipped); `npm audit` stayed clean
   (0 vulnerabilities).
 
-## Astra Full Vision: Navigation, Importer, One-by-One Flow, Exam Mode, Calendar
+## Studyy Full Vision: Navigation, Importer, One-by-One Flow, Exam Mode, Calendar
 
 ### App Navigation & Layout
-- Added `TopNav` (`src/ui/TopNav.tsx`): sticky header with Astra branding (logo mark + wordmark)
+- Added `TopNav` (`src/ui/TopNav.tsx`): sticky header with Studyy branding (logo mark + wordmark)
   and 3 tabs -- **Daily Challenge**, **Add Lesson**, **Study Calendar** -- driven by simple tab
   state in `App.tsx` (no router dependency needed for a 3-tab app). Active tab marked via
   `aria-current="page"`.
@@ -237,7 +261,7 @@ Log of Kiro features used during this project, for the final submission form.
   (violet) reserved specifically for fun-fact cards, kept distinct from the existing
   accent/success/danger/warning palette so it doesn't compete visually.
 
-### "Add Lesson" Importer & Animated Sectionizer
+### "Add Lesson" Importer & Animated Sectionizer (superseded by Phase 2 topic detection)
 - **Honesty note on "sectioning":** genuinely understanding arbitrary pasted notes well enough to
   produce 4 *meaningful* sections is an LLM-grade problem. Doing that via a network call would
   violate `.kiro/steering/storage.md` and Requirement 10 (no network calls, no backend). Instead,
@@ -267,7 +291,8 @@ Log of Kiro features used during this project, for the final submission form.
   optional `onNext` prop) to advance. All 5 Attempts are still generated/graded/persisted exactly
   as before (Requirements 3-9 unaffected) -- only the *display* changed from a list of 5 to a
   single-card cursor.
-- Added `DifficultySelector` (Easy / Normal / Hard). **Honesty note:** Astra's questions are fixed
+- *(Superseded in Phase 2: difficulty now changes how questions are built. Kept for history.)*
+  Added `DifficultySelector` (Easy / Normal / Hard). **Honesty note:** Studyy's questions are fixed
   and deterministic per day (Requirement 3.5) -- difficulty does NOT reshuffle, hide, or alter
   question content, options, or scoring (that would break the pure/deterministic Scoring_Engine).
   Instead it controls one real, visible behavior: pacing of the fun-fact card relative to
@@ -275,12 +300,12 @@ Log of Kiro features used during this project, for the final submission form.
   Hard shows none at all (pure recall). This is stated directly in the component's header comment.
 - `FunFactCard` (`src/ui/FunFactCard.tsx`): a "Did You Know?" / "A Little History" pop-out card,
   looked up per-question by `sectionId` from `src/data/funFacts.ts`. See the MCP section above for
-  how this data is meant to be populated (currently empty pending MCP setup).
+  how this data was populated (8 cited facts, see Lesson 6).
 - **Final Exam milestone**: once all 5 of today's questions are answered, `ChallengeView` shows a
   `milestone-card` ("Today's challenge is complete!") with an "I'm ready for the Final Exam"
   button.
 
-### Milestone & Final Exam
+### Milestone & Final Exam (Phase 2 turned this into the any-time "Test Yourself" exam)
 - Added `buildExam` (`src/domain/challenge.ts`): draws questions from **every** section of the
   lesson (2 per section by default, seeded/deterministic, same distractor-building logic as the
   daily selectQuestions), rather than one pooled selection that might skip a section by chance.
@@ -456,8 +481,40 @@ Full run cross-checked against `npm run test` (103/103 passing) and `npm run bui
   pools) are left as documented follow-ups rather than applied unprompted, and the one real
   generation-logic gap needs a `challenge.ts` change outside this audit's read/report-only scope.
 
-## Vibe / Agentic coding
-- (not yet used)
+- **Follow-up (Phase 2):** the one FAIL above (wrong options were true statements from other
+  concepts) is fixed by the new fill-in-the-blank generator: each question blanks a key term in
+  one of the lesson's own sentences, and the wrong options are other terms that do NOT appear in
+  that sentence, so exactly one option completes it. `src/domain/difficulty.test.ts` checks this
+  as a property over random seeds.
 
-## Other
-- (not yet used)
+## Phase 2: Upload-first redesign (spec Requirements 11-14)
+
+Planned in the same spec (`requirements.md` Req 11-14, `design.md` "Phase 2 Design", `tasks.md`
+tasks 18-22) and then implemented.
+
+- **Renamed to Studyy** everywhere (UI, page title, stylesheet, agent prompt, notes).
+- **Upload-first:** the app opens on the lesson import screen until a lesson is active, since the
+  whole app runs on your notes. The sample lesson is a one-click shortcut on that screen.
+  Notes can be pasted or opened from a local `.txt`/`.md` file.
+- **One section per topic instead of a fixed 4:** `sectionizeText` now uses headings when the notes
+  have them (markdown, "Chapter 2", "Label:", short title lines) and otherwise starts a new section
+  where the subject changes ("Mitosis is..." after a paragraph on photosynthesis). A lesson that
+  teaches 2 things becomes 2 sections; the limit is 1-12. Titles come from the heading or the
+  opening sentence's subject. After processing, a preview shows "Found N topics" before you start.
+- **Difficulty that changes the questions:** Easy = 3 options, topic named, wrong answers from other
+  topics, hints visible; Normal = fill-in-the-blank with key terms from the whole lesson; Hard =
+  the most specific term blanked, look-alike wrong answers from the same topic, no hints. Scoring
+  is identical at every level, and the day's challenge locks its difficulty once you've answered.
+- **Test Yourself:** a dashboard button available any time (no longer gated behind finishing the
+  daily set). Covers every topic, asks each point once (up to 20), grades per topic, names the
+  topics under 70% to review, saves the result, and retakes with a fresh shuffle.
+- **Fun facts and history moved into the layout:** a topic-insight panel sits beside each question
+  (locked until you answer on Normal/Hard, a hint on Easy), and each topic card on the dashboard
+  shows its cited history fact. Uploaded lessons show key terms and a recap from your notes
+  instead, because there's no cited source for them and we don't invent facts.
+- **Calendar:** month grid tinted by daily score, exam-day markers, streak / days studied / best.
+- **Design:** new dark stylesheet (violet-cyan gradient accent, glass cards, lettered answer tiles
+  that turn green/red after answering, light mode and reduced motion supported).
+- **Verification:** `npm run build` clean; `npm run test` 135/135 passing across 27 files
+  (new: `App.test.tsx`, `difficulty.test.ts`, `InsightCard.test.tsx`; rewritten importer,
+  AddLessonView, ExamView, TopNav, and calendar tests).

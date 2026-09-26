@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { selectActiveLesson, validateLesson } from "./lesson";
+import { MAX_SECTION_COUNT, MIN_SECTION_COUNT, selectActiveLesson, validateLesson } from "./lesson";
 import type { Concept, Lesson, LessonSection } from "./types";
 
 // Arbitraries -----------------------------------------------------------
@@ -22,18 +22,18 @@ const validSectionArb: fc.Arbitrary<LessonSection> = fc.record({
   concepts: fc.array(conceptArb, { minLength: 1, maxLength: 20 }),
 });
 
-/** A lesson with exactly 4 valid sections (structurally valid lesson). */
+/** A lesson with 1-6 valid sections (structurally valid lesson; one section per topic). */
 const validLessonArb: fc.Arbitrary<Lesson> = fc.record({
   id: fc.uuid(),
   title: fc.string({ minLength: 1, maxLength: 50 }),
-  sections: fc.array(validSectionArb, { minLength: 4, maxLength: 4 }),
+  sections: fc.array(validSectionArb, { minLength: 1, maxLength: 6 }),
 });
 
-/** A lesson with an arbitrary (possibly wrong) number of sections. */
+/** A lesson with an arbitrary (possibly out-of-range) number of sections. */
 const anySectionCountLessonArb: fc.Arbitrary<Lesson> = fc.record({
   id: fc.uuid(),
   title: fc.string({ minLength: 1, maxLength: 50 }),
-  sections: fc.array(validSectionArb, { minLength: 0, maxLength: 8 }),
+  sections: fc.array(validSectionArb, { minLength: 0, maxLength: 15 }),
 });
 
 /**
@@ -98,18 +98,23 @@ function lessonWithSingleSection(section: LessonSection): Lesson {
 
 describe("Property 1: Lesson section-count validity", () => {
   // Validates: Requirements 1.1, 1.4
-  it("reports valid (w.r.t. section count) iff the lesson has exactly 4 sections", () => {
+  it("reports valid (w.r.t. section count) iff the lesson has 1-12 sections", () => {
     fc.assert(
       fc.property(anySectionCountLessonArb, (lesson) => {
         const result = validateLesson(lesson);
         const hasSectionCountError = result.errors.some((e) =>
-          e.startsWith("expected 4 sections"),
+          e.startsWith(`expected ${MIN_SECTION_COUNT}-${MAX_SECTION_COUNT} sections`),
         );
-        const expectFourSections = lesson.sections.length === 4;
+        const inRange =
+          lesson.sections.length >= MIN_SECTION_COUNT &&
+          lesson.sections.length <= MAX_SECTION_COUNT;
 
-        expect(hasSectionCountError).toBe(!expectFourSections);
-        if (!expectFourSections) {
+        expect(hasSectionCountError).toBe(!inRange);
+        if (!inRange) {
           expect(result.valid).toBe(false);
+        } else {
+          // Every section here is field-valid, so the count decides validity.
+          expect(result.valid).toBe(true);
         }
       }),
       { numRuns: 200 },

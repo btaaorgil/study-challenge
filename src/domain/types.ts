@@ -20,8 +20,16 @@ export interface LessonSection {
 export interface Lesson {
   id: string;
   title: string;
-  sections: LessonSection[]; // exactly 4, order = authored order
+  sections: LessonSection[]; // 1-12, one per topic the lesson teaches; order = authored order
 }
+
+/**
+ * How hard generated questions are:
+ * - easy: 3 options, distractors from other topics, topic name shown as a hint
+ * - normal: 4 options, fill-in-the-blank with lesson-wide distractors
+ * - hard: 4 options, fill-in-the-blank with look-alike distractors from the same topic
+ */
+export type Difficulty = "easy" | "normal" | "hard";
 
 export interface AnswerOption {
   id: string;
@@ -33,7 +41,7 @@ export interface Question {
   sectionId: string; // the one LessonSection this question traces back to
   conceptId: string;
   prompt: string;
-  options: AnswerOption[]; // exactly 4
+  options: AnswerOption[]; // 4 (normal/hard) or 3 (easy)
   correctOptionId: string; // one of options[].id
   explanation: string; // non-empty
   sourceQuote: string; // non-empty, exact substring of section content
@@ -43,6 +51,21 @@ export interface DailyChallenge {
   dateKey: string; // "YYYY-MM-DD", local date
   lessonId: string;
   questions: Question[]; // exactly 5, fixed order once created
+  /** Difficulty the questions were generated at. Missing on older records = "normal". */
+  difficulty?: Difficulty;
+}
+
+/** A finished "Test Yourself" exam run, kept for the dashboard and calendar. */
+export interface ExamResult {
+  id: string;
+  lessonId: string;
+  dateKey: string; // local "YYYY-MM-DD" the exam was taken
+  difficulty: Difficulty;
+  correct: number;
+  total: number;
+  /** Per-topic breakdown so the learner can see what to review. */
+  bySection: Array<{ sectionId: string; correct: number; total: number }>;
+  finishedAt: number; // epoch ms
 }
 
 export interface Attempt {

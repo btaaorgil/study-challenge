@@ -24,7 +24,11 @@ export interface QuestionCardProps {
    * to advance to -- the caller shows a milestone/summary instead).
    */
   onNext?: () => void;
+  /** Label for the advance button, e.g. "See results" on the last question. */
+  nextLabel?: string;
 }
+
+const OPTION_LETTERS = ["A", "B", "C", "D", "E", "F"];
 
 function gradeResultFromAttempt(question: Question, attempt: Attempt): GradeResult {
   return {
@@ -41,6 +45,7 @@ export function QuestionCard({
   dateKey,
   onAnswered,
   onNext,
+  nextLabel = "Next Question",
 }: QuestionCardProps) {
   const [selectedOptionId, setSelectedOptionId] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -89,17 +94,26 @@ export function QuestionCard({
             aria-describedby={error ? errorId : undefined}
             className="option-list"
           >
-            {question.options.map((option) => {
+            {question.options.map((option, index) => {
               const optionInputId = `${question.id}-${option.id}`;
               const isSelected = answered
                 ? priorAttempt?.selectedOptionId === option.id
                 : selectedOptionId === option.id;
+              // Visual reinforcement only; FeedbackPanel states the result in text.
+              const result = !answered
+                ? undefined
+                : option.id === question.correctOptionId
+                  ? "correct"
+                  : isSelected
+                    ? "incorrect"
+                    : undefined;
               return (
                 <label
                   key={option.id}
                   htmlFor={optionInputId}
                   className="option-label"
                   data-selected={isSelected}
+                  data-result={result}
                 >
                   <input
                     type="radio"
@@ -110,7 +124,10 @@ export function QuestionCard({
                     disabled={answered}
                     onChange={() => setSelectedOptionId(option.id)}
                   />
-                  {option.text}
+                  <span className="option-letter" aria-hidden="true">
+                    {OPTION_LETTERS[index] ?? index + 1}
+                  </span>
+                  <span className="option-text">{option.text}</span>
                 </label>
               );
             })}
@@ -121,7 +138,7 @@ export function QuestionCard({
             </p>
           )}
           {!answered && (
-            <button type="submit" className="submit-answer">
+            <button type="submit" className="submit-answer primary-button">
               Submit
             </button>
           )}
@@ -142,7 +159,7 @@ export function QuestionCard({
       {answered && onNext && (
         <div className="next-question-row">
           <button type="button" className="next-question" onClick={onNext}>
-            Next Question
+            {nextLabel}
           </button>
         </div>
       )}

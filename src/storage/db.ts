@@ -3,7 +3,7 @@
 // Requirements: 9.1 (persist before operation completes), 9.2 (sole access point),
 // 9.3/9.4 (graceful degradation to in-memory on unsupported/blocked/quota-exceeded).
 
-import type { Attempt, DailyChallenge, Lesson } from "../domain/types";
+import type { Attempt, DailyChallenge, Difficulty, ExamResult, Lesson } from "../domain/types";
 import { validateLesson } from "../domain/lesson";
 import { SAMPLE_LESSON } from "../data/sampleLesson";
 
@@ -17,6 +17,16 @@ const STORE_META = "meta";
 const INDEX_BY_DATE_KEY = "by_dateKey";
 const INDEX_BY_QUESTION = "by_question";
 const META_ACTIVE_LESSON_ID_KEY = "activeLessonId";
+const META_DIFFICULTY_KEY = "difficulty";
+const META_EXAM_RESULTS_KEY = "examResults";
+/** Keep exam history bounded; older runs drop off the front. */
+const MAX_EXAM_RESULTS = 200;
+
+const DIFFICULTIES: readonly Difficulty[] = ["easy", "normal", "hard"];
+
+function isDifficulty(value: unknown): value is Difficulty {
+  return typeof value === "string" && (DIFFICULTIES as readonly string[]).includes(value);
+}
 
 export interface StorageLayer {
   init(): Promise<void>; // opens/upgrades the DB, seeds Sample_Lesson if absent
@@ -36,6 +46,14 @@ export interface StorageLayer {
   /** The id of the lesson the user most recently chose as active (e.g. via Add Lesson), if any. */
   getActiveLessonId(): Promise<string | undefined>;
   setActiveLessonId(lessonId: string): Promise<void>;
+
+  /** The learner's preferred difficulty for new challenges and exams, if they picked one. */
+  getDifficulty(): Promise<Difficulty | undefined>;
+  setDifficulty(difficulty: Difficulty): Promise<void>;
+
+  /** Finished "Test Yourself" exams, oldest first. */
+  listExamResults(): Promise<ExamResult[]>;
+  putExamResult(result: ExamResult): Promise<void>;
 }
 
 export type StorageDegradedReason = "unsupported" | "blocked" | "quota-exceeded";
@@ -51,7 +69,9 @@ export type StorageStatus =
 // v1 (2025-01): initial stores — lessons, dailyChallenges, attempts
 // v2 (2025-02): added `meta` key-value store (keyPath "key") for small
 //   singleton values like the active-lesson-id pointer used by the
-//   "Add Lesson" importer feature.
+//   "Add Lesson" importer feature. Later also holds the preferred
+//   difficulty and the "Test Yourself" exam history -- new keys in the
+//   existing store, so no version bump was needed for those.
 function runUpgrade(db: IDBDatabase, oldVersion: number): void {
   if (oldVersion < 1) {
     db.createObjectStore(STORE_LESSONS, { keyPath: "id" });
@@ -233,6 +253,8 @@ function createInMemoryStorageLayer(): StorageLayer {
   const dailyChallenges = new Map<string, DailyChallenge>();
   const attemptsByDateKey = new Map<string, Attempt[]>();
   let activeLessonId: string | undefined;
+  let difficulty: Difficulty | undefined;
+  let examResults: ExamResult[] = [];
 
   return {
     async init() {
@@ -271,6 +293,18 @@ function createInMemoryStorageLayer(): StorageLayer {
     },
     async setActiveLessonId(lessonId) {
       activeLessonId = lessonId;
+    },
+    async getDifficulty() {
+      return difficulty;
+    },
+    async setDifficulty(value) {
+      difficulty = value;
+    },
+    async listExamResults() {
+      return examResults.map(clone);
+    },
+    async putExamResult(result) {
+      examResults = [...examResults, clone(result)].slice(-MAX_EXAM_RESULTS);
     },
   };
 }
@@ -442,7 +476,55 @@ export function createStorageLayer(
         () => memory.setActiveLessonId(lessonId),
       );
     },
+
+    getDifficulty() {
+      return withFallback(
+        async (database) => {
+          const record = await getRecord<{ key: string; value: unknown }>(
+            database,
+            STORE_META,
+            META_DIFFICULTY_KEY,
+          );
+          return isDifficulty(record?.value) ? record.value : undefined;
+        },
+        () => memory.getDifficulty(),
+      );
+    },
+
+    setDifficulty(value) {
+      return withFallback(
+        (database) => putRecord(database, STORE_META, { key: META_DIFFICULTY_KEY, value }),
+        () => memory.setDifficulty(value),
+      );
+    },
+
+    listExamResults() {
+      return withFallback(
+        (database) => readExamResults(database),
+        () => memory.listExamResults(),
+      );
+    },
+
+    putExamResult(result) {
+      return withFallback(
+        async (database) => {
+          const existing = await readExamResults(database);
+          const value = [...existing, result].slice(-MAX_EXAM_RESULTS);
+          await putRecord(database, STORE_META, { key: META_EXAM_RESULTS_KEY, value });
+        },
+        () => memory.putExamResult(result),
+      );
+    },
   };
+
+  async function readExamResults(database: IDBDatabase): Promise<ExamResult[]> {
+    const record = await getRecord<{ key: string; value: unknown }>(
+      database,
+      STORE_META,
+      META_EXAM_RESULTS_KEY,
+    );
+    return Array.isArray(record?.value) ? (record.value as ExamResult[]) : [];
+  }
 
   return { storage, getStatus: () => status };
 }

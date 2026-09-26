@@ -1,19 +1,14 @@
-// DifficultySelector: lets the student choose how much of a hint the
-// "Did You Know?" fact card gives before they answer.
-//
-// Honesty note: Astra's questions are generated deterministically and fixed
-// for the day (Requirement 3.5) -- difficulty does NOT reshuffle, hide, or
-// alter question content, options, or scoring (that would contradict the
-// pure/deterministic Scoring_Engine and Requirement 3.5's "same questions on
-// reopen" guarantee). Instead, difficulty controls a real, visible behavior:
-// how early the section's fun fact appears relative to answering --
-// - Easy: fact card shown up front, as a hint before answering.
-// - Normal: fact card appears only after answering (default).
-// - Hard: no fact card at all -- pure recall.
-// This is presentational pacing, not a claim about adaptive question
-// difficulty.
+// DifficultySelector: Easy / Normal / Hard. Difficulty changes how
+// questions are BUILT (see src/domain/challenge.ts), never how they're
+// scored:
+// - Easy: 3 options, "which topic is this from?" style, topic named, hints shown
+// - Normal: 4 options, fill-in-the-blank with key terms from the whole lesson
+// - Hard: 4 options, fill-in-the-blank on the most specific term, look-alike
+//   wrong answers from the same topic, no hints
 
-export type Difficulty = "easy" | "normal" | "hard";
+import type { Difficulty } from "../domain/types";
+
+export type { Difficulty };
 
 export interface DifficultySelectorProps {
   value: Difficulty;
@@ -26,21 +21,21 @@ const OPTIONS: Array<{ id: Difficulty; label: string }> = [
   { id: "hard", label: "Hard" },
 ];
 
-const DIFFICULTY_DESCRIPTIONS: Record<Difficulty, string> = {
-  easy: "Shows the \u201cDid You Know?\u201d fact before you answer, as a hint.",
-  normal: "Reveals the fact after you answer, alongside grading.",
-  hard: "No fact card -- pure recall, no hints.",
+export const DIFFICULTY_DESCRIPTIONS: Record<Difficulty, string> = {
+  easy: "3 choices, the topic is named, and hints are shown before you answer.",
+  normal: "4 choices. Fill in the missing key term from your lesson.",
+  hard: "4 look-alike choices from the same topic. No hints, pure recall.",
 };
 
 export function DifficultySelector({ value, onChange }: DifficultySelectorProps) {
   return (
-    <>
-      <div className="difficulty-selector" role="group" aria-label="Difficulty">
+    <div className="difficulty">
+      <div className="segmented" role="group" aria-label="Difficulty">
         {OPTIONS.map((option) => (
           <button
             key={option.id}
             type="button"
-            className="difficulty-option"
+            className={`segmented-option segmented-option--${option.id}`}
             aria-pressed={value === option.id}
             onClick={() => onChange(option.id)}
           >
@@ -49,6 +44,6 @@ export function DifficultySelector({ value, onChange }: DifficultySelectorProps)
         ))}
       </div>
       <p className="difficulty-note">{DIFFICULTY_DESCRIPTIONS[value]}</p>
-    </>
+    </div>
   );
 }

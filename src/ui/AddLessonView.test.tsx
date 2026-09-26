@@ -4,15 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { IDBFactory } from "fake-indexeddb";
 import { AddLessonView } from "./AddLessonView";
 import { createStorageLayer } from "../storage/db";
+import { formatLocalDate } from "../domain/challenge";
 
-const RICH_NOTES = `
-Photosynthesis is the process plants use to convert light energy into chemical energy. It occurs in chloroplasts. Chlorophyll absorbs light for this process. Oxygen is released as a byproduct.
+const TWO_TOPIC_NOTES = `## Photosynthesis
+Photosynthesis is the process plants use to convert light energy into chemical energy. It occurs in chloroplasts. Chlorophyll absorbs light for this process.
 
-Cellular respiration is how cells break down glucose to release energy. It happens in mitochondria. ATP is the main energy currency produced. Carbon dioxide is released as a byproduct.
-
-Mitosis is the process of cell division that produces two identical daughter cells. It is used for growth and repair. The cell cycle includes several phases. Chromosomes are copied before mitosis begins.
-
-DNA is the molecule that carries genetic information. It is shaped like a double helix. Genes are segments of DNA that code for proteins. Mutations are changes in DNA sequence.
+## Cellular respiration
+Cellular respiration is how cells break down glucose to release energy. It happens in mitochondria. ATP is the main energy currency produced.
 `;
 
 let dbCounter = 0;
@@ -21,43 +19,58 @@ function freshStorage() {
   return createStorageLayer(new IDBFactory(), `add-lesson-view-${dbCounter}`);
 }
 
-describe("AddLessonView: paste, process, and import a lesson", () => {
-  it("disables Process Lesson until text is entered", () => {
+describe("AddLessonView: paste notes, find topics, build quizzes", () => {
+  it("shows the welcome hero and sample shortcut on first run", async () => {
+    const user = userEvent.setup();
     const { storage } = freshStorage();
-    render(<AddLessonView storage={storage} onLessonImported={vi.fn()} stageDelayMs={0} />);
-    expect(screen.getByRole("button", { name: /process lesson/i })).toBeDisabled();
+    const onUseSample = vi.fn();
+    render(
+      <AddLessonView storage={storage} onLessonImported={vi.fn()} firstRun onUseSample={onUseSample} stageDelayMs={0} />,
+    );
+    expect(screen.getByText(/welcome to studyy/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /try the sample lesson/i }));
+    expect(onUseSample).toHaveBeenCalledTimes(1);
   });
 
-  it("runs the staged pipeline, saves the lesson, sets it active, and calls onLessonImported", async () => {
+  it("disables the process button until text is entered", () => {
+    const { storage } = freshStorage();
+    render(<AddLessonView storage={storage} onLessonImported={vi.fn()} stageDelayMs={0} />);
+    expect(screen.getByRole("button", { name: /turn into quizzes/i })).toBeDisabled();
+  });
+
+  it("finds one section per topic, saves the lesson, sets it active, builds today's challenge, then previews", async () => {
     const user = userEvent.setup();
     const { storage } = freshStorage();
     await storage.init();
     const onLessonImported = vi.fn();
 
     render(
-      <AddLessonView storage={storage} onLessonImported={onLessonImported} stageDelayMs={0} />,
+      <AddLessonView storage={storage} onLessonImported={onLessonImported} difficulty="hard" stageDelayMs={0} />,
     );
 
-    // fireEvent.change (a single bulk paste-like update) instead of
-    // userEvent.type (which types character-by-character and is far too
-    // slow for a multi-paragraph string) -- this still exercises the real
-    // onChange handler, just without simulating individual keystrokes.
-    fireEvent.change(screen.getByLabelText(/lesson notes/i), { target: { value: RICH_NOTES } });
-    await user.click(screen.getByRole("button", { name: /process lesson/i }));
+    // Bulk change (paste-like) instead of typing character by character.
+    fireEvent.change(screen.getByLabelText(/lesson notes/i), { target: { value: TWO_TOPIC_NOTES } });
+    await user.type(screen.getByLabelText(/lesson title/i), "Biology");
+    await user.click(screen.getByRole("button", { name: /turn into quizzes/i }));
 
-    await waitFor(() => {
-      expect(onLessonImported).toHaveBeenCalledTimes(1);
-    });
+    const preview = await screen.findByTestId("lesson-preview");
+    expect(preview).toHaveTextContent("Found 2 topics");
+    expect(preview).toHaveTextContent("Photosynthesis");
+    expect(preview).toHaveTextContent("Cellular respiration");
+    expect(onLessonImported).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: /start studying/i }));
+    expect(onLessonImported).toHaveBeenCalledTimes(1);
 
     const importedLesson = onLessonImported.mock.calls[0][0];
-    expect(importedLesson.sections).toHaveLength(4);
-
-    // Persisted and marked active.
-    const stored = await storage.getLesson(importedLesson.id);
-    expect(stored).toEqual(importedLesson);
+    expect(importedLesson.title).toBe("Biology");
+    expect(importedLesson.sections).toHaveLength(2);
+    await expect(storage.getLesson(importedLesson.id)).resolves.toEqual(importedLesson);
     await expect(storage.getActiveLessonId()).resolves.toBe(importedLesson.id);
 
-    expect(screen.getByText(/is now your active lesson/i)).toBeInTheDocument();
+    const today = await storage.getDailyChallenge(formatLocalDate(new Date()));
+    expect(today?.lessonId).toBe(importedLesson.id);
+    expect(today?.difficulty).toBe("hard");
   });
 
   it("shows an inline error and does not import when there isn't enough content", async () => {
@@ -66,16 +79,28 @@ describe("AddLessonView: paste, process, and import a lesson", () => {
     await storage.init();
     const onLessonImported = vi.fn();
 
-    render(
-      <AddLessonView storage={storage} onLessonImported={onLessonImported} stageDelayMs={0} />,
-    );
+    render(<AddLessonView storage={storage} onLessonImported={onLessonImported} stageDelayMs={0} />);
 
     fireEvent.change(screen.getByLabelText(/lesson notes/i), { target: { value: "Too short." } });
-    await user.click(screen.getByRole("button", { name: /process lesson/i }));
+    await user.click(screen.getByRole("button", { name: /turn into quizzes/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/not enough content/i)).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(/not enough content/i);
     });
     expect(onLessonImported).not.toHaveBeenCalled();
+  });
+
+  it("loads notes from a local .txt file into the editor", async () => {
+    const user = userEvent.setup();
+    const { storage } = freshStorage();
+    render(<AddLessonView storage={storage} onLessonImported={vi.fn()} stageDelayMs={0} />);
+
+    const file = new File([TWO_TOPIC_NOTES], "biology-notes.txt", { type: "text/plain" });
+    await user.upload(screen.getByLabelText(/open .txt/i), file);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/lesson notes/i)).toHaveValue(TWO_TOPIC_NOTES);
+    });
+    expect(screen.getByLabelText(/lesson title/i)).toHaveValue("biology-notes");
   });
 });

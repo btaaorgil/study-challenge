@@ -1,4 +1,4 @@
-# Implementation Plan: Daily Study Challenge
+# Implementation Plan: Studyy (Daily Study Challenge)
 
 ## Overview
 
@@ -18,7 +18,7 @@ This plan implements the Daily Study Challenge in four stages, mirroring design.
     - Write one trivial smoke test to confirm the harness runs
     - _Requirements: N/A (project setup); Design: Testing Strategy_
 
-- [ ] 2. Checkpoint - ensure build and test harness run cleanly
+- [x] 2. Checkpoint - ensure build and test harness run cleanly
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 3. Define core data model types
@@ -47,7 +47,7 @@ This plan implements the Daily Study Challenge in four stages, mirroring design.
     - **Property 4: Active lesson selection falls back to the Sample_Lesson**
     - **Validates: Requirements 2.3**
 
-- [ ] 5. Implement Storage_Layer (`src/storage/db.ts`)
+- [x] 5. Implement Storage_Layer (`src/storage/db.ts`)
   - [x] 5.1 Implement IndexedDB schema v1 and typed CRUD API
     - Implement `init()`, `getLesson`/`putLesson`/`listLessons`, `getDailyChallenge`/`putDailyChallenge`, `getAttempts`/`putAttempt`
     - Create object stores `lessons`, `dailyChallenges`, `attempts` (with `by_dateKey` and `by_question` indexes) via `onupgradeneeded`, guarded by `if (oldVersion < 1)` per design.md's versioning comment convention
@@ -82,7 +82,7 @@ This plan implements the Daily Study Challenge in four stages, mirroring design.
 - [x] 6. Checkpoint - ensure Lesson and Storage_Layer tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Implement Daily_Challenge generation
+- [x] 7. Implement Daily_Challenge generation
   - [x] 7.1 Implement `selectQuestions` pure helper (`src/domain/challenge.ts`)
     - Flatten a lesson's concepts into a pool tagged with `sectionId`; filter out concepts lacking a derivable `explanation`/`sourceQuote`
     - Deterministically shuffle with a seeded PRNG (seed = `dateKey + ":" + lesson.id`, e.g. mulberry32) — no `Math.random()`
@@ -260,3 +260,42 @@ This plan implements the Daily Study Challenge in four stages, mirroring design.
   ]
 }
 ```
+
+## Phase 2: Upload-first flow, topic detection, difficulty, Test Yourself (Requirements 11-14)
+
+- [x] 18. Variable section count and topic detection
+  - [x] 18.1 Relax `validateLesson` to 1-12 sections (`MIN_SECTION_COUNT`/`MAX_SECTION_COUNT`); update Property 1 test
+    - _Requirements: 1.1, 1.4_
+  - [x] 18.2 Rewrite `sectionizeText` to split by headings, or by subject changes when there are none; subject-based titles; shared helpers in `src/domain/text.ts`
+    - _Requirements: 13.3, 13.4, 13.5, 13.6_
+  - [x] 18.3 Tests: 4 subjects -> 4 sections, 2 topics -> 2 sections, markdown/plain/label headings, wall-of-text split, single topic, 12-section cap, verbatim concepts (Property 16)
+    - _Requirements: 13.3-13.6_
+
+- [x] 19. Difficulty-aware question generation
+  - [x] 19.1 Add `Difficulty` type, `DailyChallenge.difficulty`, `optionCountFor`; fill-in-the-blank, topic-match, and statement styles in `challenge.ts`
+    - _Requirements: 11.2, 11.3, 11.4, 11.5_
+  - [x] 19.2 Lock the day's difficulty once answered in `getOrCreateDailyChallenge`
+    - _Requirements: 11.6, 11.7_
+  - [x] 19.3 Property tests for option shape, no plural-duplicate options, unambiguous blanks, Easy/Hard distractor sourcing (Properties 17, 18)
+    - _Requirements: 3.3, 11.2-11.5_
+
+- [x] 20. Test Yourself exam
+  - [x] 20.1 `buildExam(lesson, seed, difficulty, max)` covering every topic, each concept once (Property 19)
+    - _Requirements: 12.2, 12.3_
+  - [x] 20.2 `ExamView` with per-topic breakdown, "worth another look" list, retake with a fresh seed, saved `ExamResult`
+    - _Requirements: 12.4, 12.5, 12.6_
+  - [x] 20.3 Storage: `getDifficulty`/`setDifficulty`, `listExamResults`/`putExamResult` in the `meta` store with in-memory fallback
+    - _Requirements: 11.1, 12.5_
+
+- [x] 21. Upload-first UI and redesign
+  - [x] 21.1 `App` opens on `AddLessonView` until a lesson is active; sample-lesson shortcut; `.txt`/`.md` file open; "Found N topics" preview
+    - _Requirements: 13.1, 13.2, 13.7_
+  - [x] 21.2 `LessonDashboard` with difficulty picker, Daily Challenge and Test Yourself cards, topic cards, calendar
+    - _Requirements: 11.1, 12.1, 14.5_
+  - [x] 21.3 `InsightCard` beside each question (cited fact or notes recap; locked on Normal/Hard until answered)
+    - _Requirements: 14.1-14.4_
+  - [x] 21.4 Month-grid `StudyCalendarView` with score tiers, exam markers, streak
+  - [x] 21.5 Rename the app to Studyy everywhere; new dark gradient stylesheet with light-mode and reduced-motion support
+  - [x] 21.6 UI tests: App flow, AddLessonView, ExamView, TopNav, StudyCalendarView, InsightCard
+
+- [x] 22. Checkpoint - `npm run build` clean, all tests pass

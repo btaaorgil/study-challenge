@@ -1,40 +1,63 @@
-// TopNav: sticky header with Study Challenge branding and primary navigation tabs.
+// TopNav: sticky Studyy header. Brand (goes home), a lesson switcher when
+// there's more than one lesson, and the "New lesson" action.
 
-export type AppTab = "challenge" | "add-lesson" | "calendar";
+import { useId } from "react";
+import type { Lesson } from "../domain/types";
 
 export interface TopNavProps {
-  activeTab: AppTab;
-  onTabChange: (tab: AppTab) => void;
+  lessons: Lesson[];
+  activeLessonId?: string;
+  onHome: () => void;
+  onSelectLesson: (lessonId: string) => void;
+  onNewLesson: () => void;
+  /** Hide the lesson controls (e.g. on the first-run upload screen). */
+  minimal?: boolean;
 }
 
-const TABS: Array<{ id: AppTab; label: string }> = [
-  { id: "challenge", label: "Daily Challenge" },
-  { id: "add-lesson", label: "Add Lesson" },
-];
-
-export function TopNav({ activeTab, onTabChange }: TopNavProps) {
+export function TopNav({
+  lessons,
+  activeLessonId,
+  onHome,
+  onSelectLesson,
+  onNewLesson,
+  minimal = false,
+}: TopNavProps) {
+  const selectId = useId();
   return (
     <header className="top-nav">
       <div className="top-nav-inner">
-        <span className="brand">
+        <button type="button" className="brand" onClick={onHome} aria-label="Studyy home">
           <span className="brand-mark" aria-hidden="true">
             S
           </span>
-          Study Challenge
-        </span>
-        <nav className="nav-tabs" aria-label="Primary">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className="nav-tab"
-              aria-current={activeTab === tab.id ? "page" : undefined}
-              onClick={() => onTabChange(tab.id)}
-            >
-              {tab.label}
+          <span className="brand-name">Studyy</span>
+        </button>
+        {!minimal && (
+          <nav className="nav-actions" aria-label="Lessons">
+            {lessons.length > 1 && (
+              <>
+                <label htmlFor={selectId} className="visually-hidden">
+                  Current lesson
+                </label>
+                <select
+                  id={selectId}
+                  className="lesson-select"
+                  value={activeLessonId}
+                  onChange={(e) => onSelectLesson(e.target.value)}
+                >
+                  {lessons.map((lesson) => (
+                    <option key={lesson.id} value={lesson.id}>
+                      {lesson.title}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+            <button type="button" className="secondary-button nav-new" onClick={onNewLesson}>
+              + New lesson
             </button>
-          ))}
-        </nav>
+          </nav>
+        )}
       </div>
     </header>
   );

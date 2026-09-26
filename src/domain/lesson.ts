@@ -4,7 +4,10 @@
 
 import type { Lesson, LessonSection } from "./types";
 
-const REQUIRED_SECTION_COUNT = 4;
+// A lesson has one section per topic it teaches, so the count is driven by
+// the content itself, bounded to keep the dashboard and exams readable.
+export const MIN_SECTION_COUNT = 1;
+export const MAX_SECTION_COUNT = 12;
 const TITLE_MIN_LENGTH = 1;
 const TITLE_MAX_LENGTH = 100;
 const EXPLANATION_MIN_LENGTH = 1;
@@ -14,12 +17,12 @@ const CONCEPTS_MAX_COUNT = 20;
 
 export interface LessonValidationResult {
   valid: boolean;
-  errors: string[]; // e.g. "expected 4 sections, got 3"
+  errors: string[]; // e.g. "expected 1-12 sections, got 0"
 }
 
 /**
  * Validates a Lesson's structure per Requirement 1:
- * - exactly 4 LessonSections (1.1, 1.4)
+ * - between 1 and 12 LessonSections, one per topic (1.1, 1.4)
  * - each section's trimmed title (1-100 chars), trimmed explanation (1-2000 chars),
  *   and concept count (1-20) (1.2, 1.5)
  *
@@ -29,9 +32,10 @@ export interface LessonValidationResult {
 export function validateLesson(lesson: Lesson): LessonValidationResult {
   const errors: string[] = [];
 
-  if (lesson.sections.length !== REQUIRED_SECTION_COUNT) {
+  const sectionCount = lesson.sections.length;
+  if (sectionCount < MIN_SECTION_COUNT || sectionCount > MAX_SECTION_COUNT) {
     errors.push(
-      `expected ${REQUIRED_SECTION_COUNT} sections, got ${lesson.sections.length}`,
+      `expected ${MIN_SECTION_COUNT}-${MAX_SECTION_COUNT} sections, got ${sectionCount}`,
     );
   }
 

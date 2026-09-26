@@ -1,14 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { IDBFactory } from "fake-indexeddb";
 import { ExamView } from "./ExamView";
+import { createStorageLayer } from "../storage/db";
 import type { Lesson } from "../domain/types";
 
 function makeLesson(): Lesson {
   return {
     id: "exam-view-lesson",
     title: "Exam View Lesson",
-    sections: [0, 1, 2, 3].map((i) => ({
+    sections: [0, 1, 2].map((i) => ({
       id: `s${i}`,
       title: `Section ${i}`,
       explanation: `Explanation for section ${i}.`,
@@ -22,61 +24,81 @@ function makeLesson(): Lesson {
   };
 }
 
-// These tests drive a full 8-question exam via realistic userEvent
-// interactions (24 simulated clicks total), which is legitimately slower
-// than the default 5s test timeout under load -- given an explicit, longer
-// timeout rather than trimmed down, since the multi-step flow itself is
-// what's under test.
+// Drives a full 6-question exam through real clicks; slower than the 5s default under load.
 const EXAM_FLOW_TIMEOUT_MS = 20000;
 
-describe("ExamView: comprehensive multi-section exam flow", () => {
+async function answerAll(user: ReturnType<typeof userEvent.setup>, count: number) {
+  for (let i = 0; i < count; i++) {
+    await user.click(screen.getAllByRole("radio")[0]);
+    await user.click(screen.getByRole("button", { name: /submit/i }));
+    expect(screen.getByTestId("feedback-panel")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /next question|see results/i }));
+  }
+}
+
+describe("ExamView: Test Yourself over the whole lesson", () => {
   it(
-    "shows a progress bar and lets the student answer through to a final summary",
+    "covers every concept, shows a per-topic breakdown, and saves the result",
     async () => {
       const user = userEvent.setup();
-      const lesson = makeLesson();
-      const fixedDate = () => new Date(2025, 5, 1);
+      const { storage } = createStorageLayer(new IDBFactory(), "exam-view-1");
+      await storage.init();
+      const onFinished = vi.fn();
 
-      render(<ExamView lesson={lesson} onExit={vi.fn()} now={fixedDate} />);
+      render(
+        <ExamView
+          lesson={makeLesson()}
+          onExit={vi.fn()}
+          storage={storage}
+          onFinished={onFinished}
+          seed="fixed"
+          now={() => new Date(2025, 5, 1)}
+        />,
+      );
 
-      expect(screen.getByText(/question 1 of 8/i)).toBeInTheDocument();
+      // 3 topics x 2 points each = 6 questions.
+      expect(screen.getByText(/question 1 of 6/i)).toBeInTheDocument();
+      await answerAll(user, 6);
 
-      // Answer all 8 questions (4 sections x 2 questions each, per buildExam's default).
-      for (let i = 0; i < 8; i++) {
-        const radios = screen.getAllByRole("radio");
-        await user.click(radios[0]);
-        await user.click(screen.getByRole("button", { name: /submit/i }));
+      const summary = screen.getByTestId("exam-summary");
+      expect(summary).toBeInTheDocument();
+      expect(screen.getByRole("list", { name: /score by topic/i }).children).toHaveLength(3);
 
-        expect(screen.getByTestId("feedback-panel")).toBeInTheDocument();
-
-        const nextButton = screen.getByRole("button", { name: /next question|see results/i });
-        await user.click(nextButton);
-      }
-
-      expect(screen.getByTestId("exam-summary")).toBeInTheDocument();
+      expect(onFinished).toHaveBeenCalledTimes(1);
+      const result = onFinished.mock.calls[0][0];
+      expect(result.total).toBe(6);
+      expect(result.dateKey).toBe("2025-06-01");
+      await waitFor(async () => {
+        expect(await storage.listExamResults()).toHaveLength(1);
+      });
     },
     EXAM_FLOW_TIMEOUT_MS,
   );
 
   it(
-    "calls onExit when leaving the results screen",
+    "uses 3 options per question on Easy",
+    () => {
+      render(<ExamView lesson={makeLesson()} onExit={vi.fn()} difficulty="easy" seed="fixed" />);
+      expect(screen.getAllByRole("radio")).toHaveLength(3);
+      expect(screen.getByText("Easy")).toBeInTheDocument();
+    },
+  );
+
+  it(
+    "retakes with a fresh run and calls onExit from the results screen",
     async () => {
       const user = userEvent.setup();
-      const lesson = makeLesson();
       const onExit = vi.fn();
+      render(<ExamView lesson={makeLesson()} onExit={onExit} seed="fixed" now={() => new Date(2025, 5, 1)} />);
 
-      render(<ExamView lesson={lesson} onExit={onExit} now={() => new Date(2025, 5, 1)} />);
+      await answerAll(user, 6);
+      await user.click(screen.getByRole("button", { name: /retake with new questions/i }));
+      expect(screen.getByText(/question 1 of 6/i)).toBeInTheDocument();
 
-      for (let i = 0; i < 8; i++) {
-        const radios = screen.getAllByRole("radio");
-        await user.click(radios[0]);
-        await user.click(screen.getByRole("button", { name: /submit/i }));
-        await user.click(screen.getByRole("button", { name: /next question|see results/i }));
-      }
-
-      await user.click(screen.getByRole("button", { name: /back to daily challenge/i }));
+      await answerAll(user, 6);
+      await user.click(screen.getByRole("button", { name: /back to dashboard/i }));
       expect(onExit).toHaveBeenCalledTimes(1);
     },
-    EXAM_FLOW_TIMEOUT_MS,
+    EXAM_FLOW_TIMEOUT_MS * 2,
   );
 });
