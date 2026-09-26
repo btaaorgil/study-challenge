@@ -2,11 +2,8 @@
 // resolves dateKey, loads/creates the day's DailyChallenge and its Attempts
 // via the domain+storage layers, holds them in React state, and re-renders
 // on every submitAnswer. Presents questions one at a time with a progress
-// bar, a difficulty/pacing selector, and a "Did You Know?" fact card per
-// section. Once the day's 5 questions are all answered, offers to start the
-// multi-section Final Exam (Exam Mode).
-// See design.md: "UI: Challenge_View" (mermaid tree), "Error Handling table".
-// Requirements: 3.1, 3.5, 9.5.
+// bar and an always-visible "Did You Know?" fact card per section.
+// Also embeds the Study Calendar below so students have everything in one place.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatLocalDate, getOrCreateDailyChallenge } from "../domain/challenge";
@@ -17,9 +14,9 @@ import { QuestionCard } from "./QuestionCard";
 import { ScoreBadge } from "./ScoreBadge";
 import { StorageFallbackBanner } from "./StorageFallbackBanner";
 import { ProgressBar } from "./ProgressBar";
-import { DifficultySelector, type Difficulty } from "./DifficultySelector";
 import { FunFactCard } from "./FunFactCard";
 import { ExamView } from "./ExamView";
+import { StudyCalendarView } from "./StudyCalendarView";
 
 export interface ChallengeViewProps {
   lesson: Lesson;
@@ -43,8 +40,7 @@ export function ChallengeView({
 }: ChallengeViewProps) {
   const [state, setState] = useState<LoadedState | undefined>(undefined);
   const [storageStatus, setStorageStatus] = useState<StorageStatus>(getStorageStatus());
-  const [cursor, setCursor] = useState(0); // index of the question currently on screen
-  const [difficulty, setDifficulty] = useState<Difficulty>("normal");
+  const [cursor, setCursor] = useState(0);
   const [examMode, setExamMode] = useState(false);
 
   const load = useCallback(async (dateKey: string) => {
@@ -56,9 +52,6 @@ export function ChallengeView({
 
   useEffect(() => {
     void load(formatLocalDate(now()));
-    // Requirement 9.5: recompute dateKey (and reload) whenever the app
-    // regains focus, so a session left open across midnight picks up the
-    // new day's challenge.
     function handleFocus() {
       void load(formatLocalDate(now()));
     }
@@ -78,6 +71,14 @@ export function ChallengeView({
     },
     [storage, getStorageStatus],
   );
+
+  const handleResetToday = useCallback(() => {
+    setState((prev) => {
+      if (!prev) return prev;
+      return { ...prev, attempts: [] };
+    });
+    setCursor(0);
+  }, []);
 
   const sectionPills = useMemo(
     () => (state ? getSectionPills(state.challenge, lesson) : []),
@@ -121,7 +122,7 @@ export function ChallengeView({
       <StorageFallbackBanner status={storageStatus} />
       <main className="app-shell">
         <header className="app-header">
-          <h1 className="app-title">Astra</h1>
+          <h1 className="app-title">Daily Study Challenge</h1>
           <p className="app-subtitle">{formatDisplayDate(dateKey)}</p>
           {sectionPills.length > 0 && (
             <ul className="section-pills" aria-label="Lesson sections covered today">
@@ -136,13 +137,25 @@ export function ChallengeView({
 
         <ScoreBadge challenge={challenge} attempts={attempts} />
 
-        <DifficultySelector value={difficulty} onChange={setDifficulty} />
+        {attempts.length > 0 && !allAnswered && (
+          <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+            <button
+              type="button"
+              className="nav-tab"
+              onClick={handleResetToday}
+              style={{ fontSize: "0.85rem", opacity: 0.8 }}
+            >
+              Start Fresh (Reset Answers)
+            </button>
+          </div>
+        )}
 
         {!allAnswered && currentQuestion && (
           <>
             <ProgressBar current={cursor + 1} total={totalQuestions} />
 
-            {difficulty === "easy" && !currentAttempt && fact && <FunFactCard fact={fact} />}
+            {/* Always visible fun fact card right on the question */}
+            {fact && <FunFactCard fact={fact} />}
 
             <QuestionCard
               key={currentQuestion.id}
@@ -154,8 +167,6 @@ export function ChallengeView({
                 !isLastQuestion ? () => setCursor((c) => Math.min(c + 1, totalQuestions - 1)) : undefined
               }
             />
-
-            {difficulty === "normal" && currentAttempt && fact && <FunFactCard fact={fact} />}
           </>
         )}
 
@@ -169,20 +180,28 @@ export function ChallengeView({
             <button type="button" className="primary-button" onClick={() => setExamMode(true)}>
               I&apos;m ready for the Final Exam
             </button>
+            <div style={{ marginTop: "1rem" }}>
+              <button
+                type="button"
+                className="nav-tab"
+                onClick={handleResetToday}
+                style={{ fontSize: "0.85rem", opacity: 0.8 }}
+              >
+                Retake Challenge
+              </button>
+            </div>
           </section>
         )}
+
+        {/* Embedded Study Calendar right on the main challenge page */}
+        <div style={{ marginTop: "3rem", borderTop: "1px solid var(--border, #333)", paddingTop: "2rem" }}>
+          <StudyCalendarView storage={storage} />
+        </div>
       </main>
     </div>
   );
 }
 
-/**
- * Short, scannable pill labels for known sample-lesson sections (Req: header
- * shows section pills like "HTTP, DOM, Git, Big-O" rather than full titles).
- * Purely presentational -- falls back to a section's first word for any
- * lesson/section this map doesn't recognize, so custom lessons (Req 2.3)
- * still render a reasonable pill instead of breaking.
- */
 const SECTION_SHORT_LABELS: Record<string, string> = {
   "sample-section-http": "HTTP",
   "sample-section-dom": "DOM",
@@ -199,7 +218,6 @@ interface SectionPill {
   label: string;
 }
 
-/** The distinct Lesson_Sections today's questions were drawn from, in lesson order, as pill data. */
 function getSectionPills(challenge: DailyChallenge, lesson: Lesson): SectionPill[] {
   const sectionIdsUsedToday = new Set(challenge.questions.map((q) => q.sectionId));
   return lesson.sections
@@ -207,7 +225,6 @@ function getSectionPills(challenge: DailyChallenge, lesson: Lesson): SectionPill
     .map((section) => ({ sectionId: section.id, label: toShortLabel(section) }));
 }
 
-/** Formats a "YYYY-MM-DD" dateKey as a friendly local date, e.g. "Monday, January 15". */
 function formatDisplayDate(dateKey: string): string {
   const [year, month, day] = dateKey.split("-").map(Number);
   const date = new Date(year, month - 1, day);

@@ -3,13 +3,12 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TopNav } from "./TopNav";
 
-describe("TopNav: Astra branding and tab navigation", () => {
-  it("renders the Astra brand and all three tabs", () => {
+describe("TopNav: Study Challenge branding and tab navigation", () => {
+  it("renders the Study Challenge brand and primary tabs", () => {
     render(<TopNav activeTab="challenge" onTabChange={vi.fn()} />);
-    expect(screen.getByText("Astra")).toBeInTheDocument();
+    expect(screen.getByText("Study Challenge")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Daily Challenge" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add Lesson" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Study Calendar" })).toBeInTheDocument();
   });
 
   it("marks the active tab with aria-current", () => {
@@ -28,7 +27,7 @@ describe("TopNav: Astra branding and tab navigation", () => {
     const onTabChange = vi.fn();
     render(<TopNav activeTab="challenge" onTabChange={onTabChange} />);
 
-    await user.click(screen.getByRole("button", { name: "Study Calendar" }));
-    expect(onTabChange).toHaveBeenCalledWith("calendar");
+    await user.click(screen.getByRole("button", { name: "Add Lesson" }));
+    expect(onTabChange).toHaveBeenCalledWith("add-lesson");
   });
 });

@@ -1,6 +1,4 @@
-// TopNav: sticky header with Astra branding and primary navigation tabs.
-// Purely presentational routing (tab state lives in App.tsx) -- no router
-// dependency needed for a 3-tab app.
+// TopNav: sticky header with Study Challenge branding and primary navigation tabs.
 
 export type AppTab = "challenge" | "add-lesson" | "calendar";
 
@@ -12,7 +10,6 @@ export interface TopNavProps {
 const TABS: Array<{ id: AppTab; label: string }> = [
   { id: "challenge", label: "Daily Challenge" },
   { id: "add-lesson", label: "Add Lesson" },
-  { id: "calendar", label: "Study Calendar" },
 ];
 
 export function TopNav({ activeTab, onTabChange }: TopNavProps) {
@@ -21,9 +18,9 @@ export function TopNav({ activeTab, onTabChange }: TopNavProps) {
       <div className="top-nav-inner">
         <span className="brand">
           <span className="brand-mark" aria-hidden="true">
-            A
+            S
           </span>
-          Astra
+          Study Challenge
         </span>
         <nav className="nav-tabs" aria-label="Primary">
           {TABS.map((tab) => (
