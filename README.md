@@ -4,6 +4,12 @@ Turn your lesson notes into quizzes. Paste your notes (or open a `.txt`/`.md` fi
 
 Built with [Kiro](https://kiro.dev) for the Kiro University Challenge.
 
+## Why I built this
+
+I got hooked on daily puzzle games like Wordle and word scrambles: one short challenge a day that you actually look forward to. Studying usually feels like the opposite. You read a pile of material, or have an AI squeeze it into a summary, and it doesn't stick.
+
+Studyy takes that daily-puzzle feeling and points it at your own lessons. You paste your notes, and it pulls out the important parts and quizzes you on them in a fun, low-pressure way: a quick daily set, and a "Test Yourself" exam whenever you feel ready. The fun facts and bits of history beside each question keep you engaged and make things easier to remember, because they give each fact something to connect to.
+
 ## Features
 
 - **Upload-first:** the app opens on the lesson screen. Headings in your notes become topics; without headings, Studyy starts a new topic where the subject changes.
