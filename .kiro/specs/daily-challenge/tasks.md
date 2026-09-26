@@ -154,55 +154,55 @@ This plan implements the Daily Study Challenge in four stages, mirroring design.
 - [x] 10. Checkpoint - ensure all domain-layer tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Implement Challenge_View shell and data loading
-  - [ ] 11.1 Implement `ChallengeView` mount logic
+- [x] 11. Implement Challenge_View shell and data loading
+  - [x] 11.1 Implement `ChallengeView` mount logic
     - On mount, compute `dateKey`, call `getOrCreateDailyChallenge`, load same-day `Attempts` via the Storage_Layer, hold both in React state; recompute `dateKey` on window focus
     - _Requirements: 3.1, 3.5, 9.5; Design: UI: Challenge_View_
 
-  - [ ]* 11.2 Write unit test for local-date `dateKey` computation
+  - [x]* 11.2 Write unit test for local-date `dateKey` computation
     - Assert `dateKey` is derived from local date components, not UTC, across a UTC-offset boundary case
     - _Requirements: 9.5_
 
-- [ ] 12. Implement QuestionCard and FeedbackPanel
-  - [ ] 12.1 Implement `QuestionCard`
+- [x] 12. Implement QuestionCard and FeedbackPanel
+  - [x] 12.1 Implement `QuestionCard`
     - Render a `<fieldset>`/`<legend>` with the question prompt and 4 radio `<input>` options plus a submit `<button>`; disable/read-only options once answered
     - _Requirements: 4.1; Design: UI: QuestionCard_
 
-  - [ ] 12.2 Implement `FeedbackPanel`
+  - [x] 12.2 Implement `FeedbackPanel`
     - Render correct/incorrect status in an `aria-live="polite"` region, highlight the Correct_Option, display `explanation` and `sourceQuote`
     - _Requirements: 4.2, 5.1, 5.2; Design: UI: FeedbackPanel_
 
-  - [ ] 12.3 Wire QuestionCard submission to `submitAnswer` and persistence
+  - [x] 12.3 Wire QuestionCard submission to `submitAnswer` and persistence
     - On submit, call `submitAnswer`; on success persist the returned Attempt via `storage.putAttempt` and update state; on `invalid-option` show an inline error tied to the option list via `aria-describedby`; on `already-answered` redisplay the prior `FeedbackPanel`; restore answered state from any prior Attempt on load
     - _Requirements: 4.1, 4.3, 4.4; Design: UI: Challenge_View, Error Handling table_
 
-  - [ ]* 12.4 Write unit test for invalid submission handling
+  - [x]* 12.4 Write unit test for invalid submission handling
     - Assert an inline error appears and no Attempt is recorded for a missing/invalid option
     - _Requirements: 4.4_
 
-  - [ ]* 12.5 Write unit test for answered-question redisplay
+  - [x]* 12.5 Write unit test for answered-question redisplay
     - Assert a question with an existing same-day Attempt redisplays its prior feedback and rejects further submissions
     - _Requirements: 4.3_
 
-- [ ] 13. Implement ScoreBadge
-  - [ ] 13.1 Implement `ScoreBadge`
+- [x] 13. Implement ScoreBadge
+  - [x] 13.1 Implement `ScoreBadge`
     - Render literal "Not assessed yet" when there are zero attempts for the day; otherwise render `calculateScore(challenge, attempts)` as `"{n}%"`, recomputed on every attempt change
     - _Requirements: 8.2, 8.3; Design: UI: ScoreBadge_
 
-  - [ ]* 13.2 Write property test for displayed score matching the pure calculation
+  - [x]* 13.2 Write property test for displayed score matching the pure calculation
     - **Property 14: Displayed score matches the pure calculation**
     - **Validates: Requirements 8.3**
 
-- [ ] 14. Implement StorageFallbackBanner
-  - [ ] 14.1 Implement `StorageFallbackBanner`
+- [x] 14. Implement StorageFallbackBanner
+  - [x] 14.1 Implement `StorageFallbackBanner`
     - Render only when `getStorageStatus().kind === "degraded"`; dismissible; `aria-live="assertive"` on first appearance; stays visible until dismissed or the condition resolves
     - _Requirements: 9.3, 9.4; Design: UI: StorageFallbackBanner_
 
-  - [ ]* 14.2 Write unit test for fallback banner visibility
+  - [x]* 14.2 Write unit test for fallback banner visibility
     - Assert the banner appears on degraded status and remains visible until dismissed or the next successful init
     - _Requirements: 9.3, 9.4_
 
-- [ ] 15. Checkpoint - ensure all UI tests pass
+- [x] 15. Checkpoint - ensure all UI tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 16. Author and integrate the Sample_Lesson

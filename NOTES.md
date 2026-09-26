@@ -108,6 +108,29 @@ Log of Kiro features used during this project, for the final submission form.
 - All 42 tests pass across tasks 3-5 and 7-9 combined (checkpoint 10); build and `npm audit`
   stayed clean throughout (0 vulnerabilities).
 
+### Lesson 4 (cont'd): UI components (Tasks 11-15)
+- Built the Challenge_View component tree in `src/ui/`: `ChallengeView` (mount/load/focus-refresh
+  shell), `QuestionCard` (accessible `<fieldset>`/radio-group form wired to `submitAnswer`),
+  `FeedbackPanel` (`aria-live="polite"` correct/incorrect status + explanation + source quote),
+  `ScoreBadge` ("Not assessed yet" vs live `{n}%`), and `StorageFallbackBanner` (dismissible,
+  `aria-live="assertive"` degraded-storage warning). All keyboard-operable per
+  `.kiro/steering/ui.md` (native radio inputs/buttons, no mouse-only interactions).
+- Added `@testing-library/react`, `@testing-library/user-event`, and `@testing-library/jest-dom`
+  as dev dependencies (React 18-compatible versions) to test the component tree; wired jest-dom
+  matchers and automatic unmount/cleanup into `vitest.setup.ts`.
+- Property-based test in `src/ui/ScoreBadge.property.test.tsx`:
+  - **Property 14** - the score rendered by `ScoreBadge` always equals
+    `calculateScore(challenge, attempts)` for any non-empty attempts array (100 runs).
+- Unit/integration tests: `QuestionCard.test.tsx` (invalid-option error display, and
+  already-answered questions redisplaying prior feedback with all inputs disabled),
+  `StorageFallbackBanner.test.tsx` (renders per degraded reason, dismissible, disappears when the
+  condition resolves), and `ChallengeView.test.tsx` (dateKey computed from local date components
+  across a UTC-offset boundary case, and a full mount-to-render integration check against a real
+  `fake-indexeddb`-backed Storage_Layer).
+- All 53 tests pass (checkpoint 15); build (`tsc -b && vite build`) and `npm audit` stayed clean
+  (0 vulnerabilities). Note: `App.tsx` doesn't render `ChallengeView` yet -- that wiring happens in
+  Task 16 once `SAMPLE_LESSON` exists to pass in as a real `Lesson`.
+
 ## Vibe / Agentic coding
 - (not yet used)
 
