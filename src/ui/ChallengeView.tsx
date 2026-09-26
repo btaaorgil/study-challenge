@@ -1,17 +1,25 @@
 // ChallengeView: the top-level Daily Study Challenge screen. On mount,
 // resolves dateKey, loads/creates the day's DailyChallenge and its Attempts
 // via the domain+storage layers, holds them in React state, and re-renders
-// on every submitAnswer.
+// on every submitAnswer. Presents questions one at a time with a progress
+// bar, a difficulty/pacing selector, and a "Did You Know?" fact card per
+// section. Once the day's 5 questions are all answered, offers to start the
+// multi-section Final Exam (Exam Mode).
 // See design.md: "UI: Challenge_View" (mermaid tree), "Error Handling table".
 // Requirements: 3.1, 3.5, 9.5.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatLocalDate, getOrCreateDailyChallenge } from "../domain/challenge";
 import type { Attempt, DailyChallenge, Lesson, LessonSection } from "../domain/types";
 import type { StorageLayer, StorageStatus } from "../storage/db";
+import { getFunFactsForSection } from "../data/funFacts";
 import { QuestionCard } from "./QuestionCard";
 import { ScoreBadge } from "./ScoreBadge";
 import { StorageFallbackBanner } from "./StorageFallbackBanner";
+import { ProgressBar } from "./ProgressBar";
+import { DifficultySelector, type Difficulty } from "./DifficultySelector";
+import { FunFactCard } from "./FunFactCard";
+import { ExamView } from "./ExamView";
 
 export interface ChallengeViewProps {
   lesson: Lesson;
@@ -35,6 +43,9 @@ export function ChallengeView({
 }: ChallengeViewProps) {
   const [state, setState] = useState<LoadedState | undefined>(undefined);
   const [storageStatus, setStorageStatus] = useState<StorageStatus>(getStorageStatus());
+  const [cursor, setCursor] = useState(0); // index of the question currently on screen
+  const [difficulty, setDifficulty] = useState<Difficulty>("normal");
+  const [examMode, setExamMode] = useState(false);
 
   const load = useCallback(async (dateKey: string) => {
     const challenge = await getOrCreateDailyChallenge(dateKey, lesson, storage);
@@ -68,6 +79,21 @@ export function ChallengeView({
     [storage, getStorageStatus],
   );
 
+  const sectionPills = useMemo(
+    () => (state ? getSectionPills(state.challenge, lesson) : []),
+    [state, lesson],
+  );
+
+  if (examMode) {
+    return (
+      <ExamView
+        lesson={lesson}
+        onExit={() => setExamMode(false)}
+        now={now}
+      />
+    );
+  }
+
   if (!state) {
     return (
       <div className="page">
@@ -82,7 +108,13 @@ export function ChallengeView({
 
   const { challenge, attempts, dateKey } = state;
   const attemptByQuestionId = new Map(attempts.map((a) => [a.questionId, a]));
-  const sectionPills = getSectionPills(challenge, lesson);
+  const totalQuestions = challenge.questions.length;
+  const allAnswered = attempts.length >= totalQuestions;
+  const currentQuestion = challenge.questions[Math.min(cursor, totalQuestions - 1)];
+  const currentAttempt = currentQuestion ? attemptByQuestionId.get(currentQuestion.id) : undefined;
+  const isLastQuestion = cursor >= totalQuestions - 1;
+  const funFacts = currentQuestion ? getFunFactsForSection(currentQuestion.sectionId) : [];
+  const fact = funFacts[0];
 
   return (
     <div className="page">
@@ -101,18 +133,44 @@ export function ChallengeView({
             </ul>
           )}
         </header>
+
         <ScoreBadge challenge={challenge} attempts={attempts} />
-        <ol className="question-list">
-          {challenge.questions.map((question) => (
+
+        <DifficultySelector value={difficulty} onChange={setDifficulty} />
+
+        {!allAnswered && currentQuestion && (
+          <>
+            <ProgressBar current={cursor + 1} total={totalQuestions} />
+
+            {difficulty === "easy" && !currentAttempt && fact && <FunFactCard fact={fact} />}
+
             <QuestionCard
-              key={question.id}
-              question={question}
-              priorAttempt={attemptByQuestionId.get(question.id)}
+              key={currentQuestion.id}
+              question={currentQuestion}
+              priorAttempt={currentAttempt}
               dateKey={dateKey}
               onAnswered={handleAnswered}
+              onNext={
+                !isLastQuestion ? () => setCursor((c) => Math.min(c + 1, totalQuestions - 1)) : undefined
+              }
             />
-          ))}
-        </ol>
+
+            {difficulty === "normal" && currentAttempt && fact && <FunFactCard fact={fact} />}
+          </>
+        )}
+
+        {allAnswered && (
+          <section className="milestone-card" data-testid="milestone-card">
+            <p className="milestone-title">Today&apos;s challenge is complete!</p>
+            <p className="milestone-text">
+              You&apos;ve answered all {totalQuestions} questions. Ready to test everything
+              you&apos;ve learned across every section?
+            </p>
+            <button type="button" className="primary-button" onClick={() => setExamMode(true)}>
+              I&apos;m ready for the Final Exam
+            </button>
+          </section>
+        )}
       </main>
     </div>
   );

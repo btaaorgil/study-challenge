@@ -17,6 +17,13 @@ export interface QuestionCardProps {
   dateKey: string;
   /** Called once a new submission is successfully graded, so the caller can persist it. */
   onAnswered: (attempt: Attempt) => void;
+  /**
+   * When provided, a "Next Question" button renders once this question is
+   * answered, letting the caller advance the one-by-one question flow.
+   * Omitted entirely on the last question of a challenge (there's nothing
+   * to advance to -- the caller shows a milestone/summary instead).
+   */
+  onNext?: () => void;
 }
 
 function gradeResultFromAttempt(question: Question, attempt: Attempt): GradeResult {
@@ -28,7 +35,13 @@ function gradeResultFromAttempt(question: Question, attempt: Attempt): GradeResu
   };
 }
 
-export function QuestionCard({ question, priorAttempt, dateKey, onAnswered }: QuestionCardProps) {
+export function QuestionCard({
+  question,
+  priorAttempt,
+  dateKey,
+  onAnswered,
+  onNext,
+}: QuestionCardProps) {
   const [selectedOptionId, setSelectedOptionId] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
   const errorId = useId();
@@ -67,7 +80,7 @@ export function QuestionCard({ question, priorAttempt, dateKey, onAnswered }: Qu
   }
 
   return (
-    <li className="question-card" data-testid="question-card">
+    <div className="question-card" data-testid="question-card">
       <form onSubmit={handleSubmit}>
         <fieldset disabled={answered}>
           <legend className="question-prompt">{question.prompt}</legend>
@@ -125,6 +138,14 @@ export function QuestionCard({ question, priorAttempt, dateKey, onAnswered }: Qu
           sourceQuote={gradeResult.sourceQuote}
         />
       )}
-    </li>
+
+      {answered && onNext && (
+        <div className="next-question-row">
+          <button type="button" className="next-question" onClick={onNext}>
+            Next Question
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

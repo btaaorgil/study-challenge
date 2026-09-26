@@ -223,6 +223,141 @@ Log of Kiro features used during this project, for the final submission form.
   (`npm run build`, CSS now bundled at 6.87 kB / 1.89 kB gzipped); `npm audit` stayed clean
   (0 vulnerabilities).
 
+## Astra Full Vision: Navigation, Importer, One-by-One Flow, Exam Mode, Calendar
+
+### App Navigation & Layout
+- Added `TopNav` (`src/ui/TopNav.tsx`): sticky header with Astra branding (logo mark + wordmark)
+  and 3 tabs -- **Daily Challenge**, **Add Lesson**, **Study Calendar** -- driven by simple tab
+  state in `App.tsx` (no router dependency needed for a 3-tab app). Active tab marked via
+  `aria-current="page"`.
+- Restyled `src/index.css` to be **dark by default** with a `prefers-color-scheme: light` override
+  (previously the reverse), per this task's "dark-themed with subtle accents" direction -- both
+  modes remain fully defined for every token, keeping the design-system-scaffold power's
+  "components must support both light and dark modes" rule intact. Added a `--color-fact` accent
+  (violet) reserved specifically for fun-fact cards, kept distinct from the existing
+  accent/success/danger/warning palette so it doesn't compete visually.
+
+### "Add Lesson" Importer & Animated Sectionizer
+- **Honesty note on "sectioning":** genuinely understanding arbitrary pasted notes well enough to
+  produce 4 *meaningful* sections is an LLM-grade problem. Doing that via a network call would
+  violate `.kiro/steering/storage.md` and Requirement 10 (no network calls, no backend). Instead,
+  `src/domain/importLesson.ts`'s `sectionizeText` is a **deterministic, local, non-LLM heuristic**:
+  it splits pasted text into paragraphs (or sentences, if there are too few paragraphs), distributes
+  them evenly across exactly 4 sections, and turns each sentence into a Concept whose `sourceQuote`
+  is an exact, unmodified substring of the user's own words -- nothing is fabricated, paraphrased,
+  or invented. This is documented in the module's header comment so the behavior is never
+  misrepresented as AI-powered understanding.
+- `AddLessonView` (`src/ui/AddLessonView.tsx`): a textarea for pasted notes/slides, a "Process
+  Lesson" button, and a staged fake-progress pipeline ("Analyzing text..." -> "Generating
+  sections..." -> "Curating trivia...") with an animated gradient progress bar and spinner
+  (`prefers-reduced-motion`-aware). On success, the imported Lesson is saved via
+  `storage.putLesson`, marked active via the new `storage.setActiveLessonId`, and today's
+  Daily_Challenge is immediately regenerated from it via the new
+  `generateAndPersistDailyChallenge` (rather than waiting for the next calendar day).
+- Storage_Layer additions (`src/storage/db.ts`, schema bumped to **v2**): a `meta` key-value
+  object store holding the active-lesson-id pointer (`getActiveLessonId`/`setActiveLessonId`),
+  migrated in via `onupgradeneeded`'s `if (oldVersion < 2)` guard (tested against a simulated
+  pre-existing v1 database to confirm the migration path itself). `resolveActiveLesson`
+  (`src/domain/lesson.ts`) checks this pointer first, falling back to the existing
+  `selectActiveLesson` rule if the pointer is unset or stale.
+
+### One-by-One Question Flow & Pop-out Fun Facts
+- Rewrote `ChallengeView` to show **exactly one `QuestionCard` at a time**, with a `ProgressBar`
+  ("Question X of Y") above it and a "Next Question" button (added to `QuestionCard` via a new
+  optional `onNext` prop) to advance. All 5 Attempts are still generated/graded/persisted exactly
+  as before (Requirements 3-9 unaffected) -- only the *display* changed from a list of 5 to a
+  single-card cursor.
+- Added `DifficultySelector` (Easy / Normal / Hard). **Honesty note:** Astra's questions are fixed
+  and deterministic per day (Requirement 3.5) -- difficulty does NOT reshuffle, hide, or alter
+  question content, options, or scoring (that would break the pure/deterministic Scoring_Engine).
+  Instead it controls one real, visible behavior: pacing of the fun-fact card relative to
+  answering -- Easy shows it before answering (a hint), Normal shows it after (reinforcement),
+  Hard shows none at all (pure recall). This is stated directly in the component's header comment.
+- `FunFactCard` (`src/ui/FunFactCard.tsx`): a "Did You Know?" / "A Little History" pop-out card,
+  looked up per-question by `sectionId` from `src/data/funFacts.ts`. See the MCP section above for
+  how this data is meant to be populated (currently empty pending MCP setup).
+- **Final Exam milestone**: once all 5 of today's questions are answered, `ChallengeView` shows a
+  `milestone-card` ("Today's challenge is complete!") with an "I'm ready for the Final Exam"
+  button.
+
+### Milestone & Final Exam
+- Added `buildExam` (`src/domain/challenge.ts`): draws questions from **every** section of the
+  lesson (2 per section by default, seeded/deterministic, same distractor-building logic as the
+  daily selectQuestions), rather than one pooled selection that might skip a section by chance.
+- `ExamView` (`src/ui/ExamView.tsx`): presents the exam one question at a time (same progress-bar
+  pattern), grades each answer via the existing pure `gradeAttempt`, shows the same
+  `FeedbackPanel`/`FunFactCard`, and ends on a summary screen (percentage + "N of M correct across
+  every section"). Exam attempts are **not** persisted as `Attempt` records and do not affect the
+  daily Score -- Requirements 6/7/8's scope is explicitly the current day's Daily_Challenge; the
+  exam is a separate, on-demand, non-persisted self-check, called out explicitly in the module's
+  header comment to avoid conflating the two scoring paths.
+
+### Study Calendar & Milestones tab
+- Added `storage.listDailyChallenges()` and `StudyCalendarView` (`src/ui/StudyCalendarView.tsx`):
+  lists every persisted Daily_Challenge chronologically (newest first), each day's score (via the
+  same pure `calculateScore`) or "Not started", and flags perfect-score days with a "Perfect score"
+  milestone badge. Exam-mode challenges (dateKey prefixed `exam:`) are filtered out since exam
+  results are intentionally not persisted.
+
+### Bug found and fixed along the way
+- The property test for **Property 11** (order-independence of `calculateScore`) caught a real,
+  pre-existing bug while I was adding new tests: the tiebreak for two attempts sharing an identical
+  `submittedAt` used the input array's *index*, not attempt content -- meaning shuffling the same
+  attempt set could change the computed score, silently violating Requirement 6.1's
+  order-independence guarantee. Fixed `calculateScore` in `src/domain/scoring.ts` to tiebreak
+  deterministically by attempt `id` then `selectedOptionId` instead of array position. This was a
+  correctness fix, not a behavior change tied to this task's new features.
+
+### Testing & verification
+- New/updated test files: `db.test.ts` (listDailyChallenges, active-lesson-id pointer, v1->v2
+  schema migration), `importLesson.test.ts` (sectionizer determinism, validity, no-fabrication
+  guarantee, edge cases), `resolveActiveLesson.test.ts`, `challengeExtras.test.ts`
+  (`generateAndPersistDailyChallenge`, `buildExam`), `ChallengeView.test.tsx` (updated for the
+  one-by-one flow), `TopNav.test.tsx`, `AddLessonView.test.tsx`, `ExamView.test.tsx`,
+  `StudyCalendarView.test.tsx`, `DifficultySelector.test.tsx`, `FunFactCard.test.tsx`.
+- **All 103 tests pass** (`npm run test`); production build succeeds (`npm run build`, 48 modules,
+  CSS bundle 14.38 kB / 3.07 kB gzipped); `npm audit` stayed clean throughout (0 vulnerabilities).
+
+## MCP (Lesson 6)
+
+### Lesson 6: MCP - fetch server for cited fun-fact research
+**Status: blocked, not yet complete.** This section documents what's configured so far and what's
+still outstanding.
+
+- Recommended server: [zcaceres/fetch-mcp](https://github.com/zcaceres/fetch-mcp) (`mcp-fetch-server`
+  on npm), MIT licensed, exposes `fetch_markdown`/`fetch_readable`/`fetch_html`/`fetch_json` tools
+  with built-in SSRF protection.
+- Recommended config for `.kiro/settings/mcp.json`:
+  ```json
+  {
+    "mcpServers": {
+      "fetch": {
+        "command": "npx",
+        "args": ["-y", "mcp-fetch-server"],
+        "env": { "DEFAULT_LIMIT": "8000" },
+        "disabled": false
+      }
+    }
+  }
+  ```
+- I (the agent) am blocked from writing to `.kiro/settings/` directly -- it's covered by a Kiro
+  safety rule (`deny fs_write matching ".kiro/settings/..."`). The user needs to create this file
+  themselves; once saved, the fetch MCP tool should become available in-session (reconnect via the
+  MCP Server view if it doesn't appear automatically).
+- Planned usage once available: call `fetch_readable`/`fetch_markdown` against a small set of
+  reputable sources (e.g. MDN, the official Git project history, W3C/IETF documents, a Big-O/complexity
+  reference) to pull real, checkable facts about HTTP, the DOM, Git, and Big-O -- one trivia or
+  history fact per bundled Sample_Lesson section. Each fact will be copied into
+  `src/data/funFacts.ts` as static data (see that file's header comment) with its exact source URL,
+  preserving Astra's zero-runtime-network posture: the MCP tool is only ever used at
+  authoring/build time, never from the deployed app.
+- `src/data/funFacts.ts` currently ships with an empty `FUN_FACTS` array and full plumbing
+  (`FunFactCard` component, section-keyed lookup, Easy/Normal-difficulty display logic in
+  `ChallengeView` and `ExamView`) already wired up and tested -- it will render real facts the
+  moment entries are added, with no code changes needed elsewhere.
+- This section will be updated with the actual tool calls, sources, and fetched content once
+  `.kiro/settings/mcp.json` is in place.
+
 ## Vibe / Agentic coding
 - (not yet used)
 

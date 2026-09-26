@@ -175,16 +175,55 @@ export async function getOrCreateDailyChallenge(
   storage: StorageLayer,
 ): Promise<DailyChallenge> {
   const existing = await storage.getDailyChallenge(dateKey);
-  if (existing) {
+  if (existing && existing.lessonId === lesson.id) {
     return existing;
   }
 
+  return generateAndPersistDailyChallenge(dateKey, lesson, storage);
+}
+
+/**
+ * Unconditionally (re)generates today's Daily_Challenge from `lesson` and
+ * persists it, overwriting whatever was previously stored for `dateKey`.
+ * Used when a brand-new lesson is imported ("Add Lesson") and should
+ * immediately become the source for today's questions, even if a challenge
+ * from a *different* (now-replaced) lesson already exists for today.
+ */
+export async function generateAndPersistDailyChallenge(
+  dateKey: string,
+  lesson: Lesson,
+  storage: StorageLayer,
+): Promise<DailyChallenge> {
   const seed = `${dateKey}${SEED_SEPARATOR}${lesson.id}`;
   const questions = selectQuestions(lesson, seed, REQUIRED_QUESTION_COUNT);
   const challenge: DailyChallenge = { dateKey, lessonId: lesson.id, questions };
 
   await storage.putDailyChallenge(challenge);
   return challenge;
+}
+
+/**
+ * Builds a comprehensive "Final Exam" DailyChallenge-shaped set covering
+ * every section of the lesson: draws (at least) `perSection` questions from
+ * each of the lesson's 4 sections instead of one pooled selection, so all
+ * sections are represented rather than left to chance. Not persisted under
+ * the normal per-day dateKey -- callers store/display it separately (Exam
+ * Mode is a distinct, on-demand mode, not part of the daily-challenge flow).
+ */
+export function buildExam(lesson: Lesson, seed: string, perSection: number = 2): DailyChallenge {
+  const questionsBySection = lesson.sections.map((section) => {
+    const singleSectionLesson: Lesson = { ...lesson, sections: [section] };
+    return selectQuestions(singleSectionLesson, `${seed}${SEED_SEPARATOR}exam${SEED_SEPARATOR}${section.id}`, perSection);
+  });
+
+  const rng = createSeededRng(`${seed}${SEED_SEPARATOR}exam-order`);
+  const questions = seededShuffle(questionsBySection.flat(), rng);
+
+  return {
+    dateKey: `exam${SEED_SEPARATOR}${seed}`,
+    lessonId: lesson.id,
+    questions,
+  };
 }
 
 /**

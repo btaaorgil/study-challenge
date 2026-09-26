@@ -90,3 +90,24 @@ export function selectActiveLesson(
   );
   return qualifying ?? sampleLesson;
 }
+
+/**
+ * Resolves the active lesson honoring an explicit "active lesson id"
+ * pointer (set when the user imports a lesson via "Add Lesson") ahead of
+ * the generic selectActiveLesson fallback rule. If the pointer references a
+ * lesson that no longer exists or no longer validates, falls back to
+ * selectActiveLesson's normal behavior rather than failing.
+ */
+export function resolveActiveLesson(
+  storedLessons: Lesson[],
+  sampleLesson: Lesson,
+  activeLessonId: string | undefined,
+): Lesson {
+  if (activeLessonId) {
+    const pointed = storedLessons.find((lesson) => lesson.id === activeLessonId);
+    if (pointed && validateLesson(pointed).valid) {
+      return pointed;
+    }
+  }
+  return selectActiveLesson(storedLessons, sampleLesson);
+}

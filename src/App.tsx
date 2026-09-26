@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { ChallengeView } from "./ui/ChallengeView";
+import { AddLessonView } from "./ui/AddLessonView";
+import { StudyCalendarView } from "./ui/StudyCalendarView";
+import { TopNav, type AppTab } from "./ui/TopNav";
 import { storage, getStorageStatus } from "./storage/db";
-import { selectActiveLesson } from "./domain/lesson";
+import { resolveActiveLesson } from "./domain/lesson";
 import { SAMPLE_LESSON } from "./data/sampleLesson";
 import type { Lesson } from "./domain/types";
 
 function App() {
   const [lesson, setLesson] = useState<Lesson | undefined>(undefined);
+  const [tab, setTab] = useState<AppTab>("challenge");
 
   useEffect(() => {
     let cancelled = false;
@@ -15,7 +19,8 @@ function App() {
       // SAMPLE_LESSON if no other lesson qualifies (Req 2.1, 2.3).
       await storage.init();
       const storedLessons = await storage.listLessons();
-      const activeLesson = selectActiveLesson(storedLessons, SAMPLE_LESSON);
+      const activeLessonId = await storage.getActiveLessonId();
+      const activeLesson = resolveActiveLesson(storedLessons, SAMPLE_LESSON, activeLessonId);
       if (!cancelled) {
         setLesson(activeLesson);
       }
@@ -39,7 +44,22 @@ function App() {
   }
 
   return (
-    <ChallengeView lesson={lesson} storage={storage} getStorageStatus={getStorageStatus} />
+    <>
+      <TopNav activeTab={tab} onTabChange={setTab} />
+      {tab === "challenge" && (
+        <ChallengeView lesson={lesson} storage={storage} getStorageStatus={getStorageStatus} />
+      )}
+      {tab === "add-lesson" && (
+        <AddLessonView
+          storage={storage}
+          onLessonImported={(imported) => {
+            setLesson(imported);
+            setTab("challenge");
+          }}
+        />
+      )}
+      {tab === "calendar" && <StudyCalendarView storage={storage} />}
+    </>
   );
 }
 

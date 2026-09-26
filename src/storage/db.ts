@@ -8,13 +8,15 @@ import { validateLesson } from "../domain/lesson";
 import { SAMPLE_LESSON } from "../data/sampleLesson";
 
 const DB_NAME = "daily-challenge-db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const STORE_LESSONS = "lessons";
 const STORE_DAILY_CHALLENGES = "dailyChallenges";
 const STORE_ATTEMPTS = "attempts";
+const STORE_META = "meta";
 const INDEX_BY_DATE_KEY = "by_dateKey";
 const INDEX_BY_QUESTION = "by_question";
+const META_ACTIVE_LESSON_ID_KEY = "activeLessonId";
 
 export interface StorageLayer {
   init(): Promise<void>; // opens/upgrades the DB, seeds Sample_Lesson if absent
@@ -25,9 +27,15 @@ export interface StorageLayer {
 
   getDailyChallenge(dateKey: string): Promise<DailyChallenge | undefined>;
   putDailyChallenge(challenge: DailyChallenge): Promise<void>;
+  /** All persisted Daily_Challenges, in no particular order (used by the Study Calendar). */
+  listDailyChallenges(): Promise<DailyChallenge[]>;
 
   getAttempts(dateKey: string): Promise<Attempt[]>;
   putAttempt(attempt: Attempt): Promise<void>;
+
+  /** The id of the lesson the user most recently chose as active (e.g. via Add Lesson), if any. */
+  getActiveLessonId(): Promise<string | undefined>;
+  setActiveLessonId(lessonId: string): Promise<void>;
 }
 
 export type StorageDegradedReason = "unsupported" | "blocked" | "quota-exceeded";
@@ -41,6 +49,9 @@ export type StorageStatus =
 // ---------------------------------------------------------------------------
 
 // v1 (2025-01): initial stores — lessons, dailyChallenges, attempts
+// v2 (2025-02): added `meta` key-value store (keyPath "key") for small
+//   singleton values like the active-lesson-id pointer used by the
+//   "Add Lesson" importer feature.
 function runUpgrade(db: IDBDatabase, oldVersion: number): void {
   if (oldVersion < 1) {
     db.createObjectStore(STORE_LESSONS, { keyPath: "id" });
@@ -49,7 +60,10 @@ function runUpgrade(db: IDBDatabase, oldVersion: number): void {
     attempts.createIndex(INDEX_BY_DATE_KEY, "dateKey");
     attempts.createIndex(INDEX_BY_QUESTION, ["dateKey", "questionId"]);
   }
-  // v2+ upgrades appended here, guarded by `if (oldVersion < N)`
+  if (oldVersion < 2) {
+    db.createObjectStore(STORE_META, { keyPath: "key" });
+  }
+  // v3+ upgrades appended here, guarded by `if (oldVersion < N)`
 }
 
 // ---------------------------------------------------------------------------
@@ -218,6 +232,7 @@ function createInMemoryStorageLayer(): StorageLayer {
   const lessons = new Map<string, Lesson>();
   const dailyChallenges = new Map<string, DailyChallenge>();
   const attemptsByDateKey = new Map<string, Attempt[]>();
+  let activeLessonId: string | undefined;
 
   return {
     async init() {
@@ -240,6 +255,9 @@ function createInMemoryStorageLayer(): StorageLayer {
     async putDailyChallenge(challenge) {
       dailyChallenges.set(challenge.dateKey, clone(challenge));
     },
+    async listDailyChallenges() {
+      return Array.from(dailyChallenges.values()).map(clone);
+    },
     async getAttempts(dateKey) {
       return (attemptsByDateKey.get(dateKey) ?? []).map(clone);
     },
@@ -247,6 +265,12 @@ function createInMemoryStorageLayer(): StorageLayer {
       const existing = attemptsByDateKey.get(attempt.dateKey) ?? [];
       existing.push(clone(attempt));
       attemptsByDateKey.set(attempt.dateKey, existing);
+    },
+    async getActiveLessonId() {
+      return activeLessonId;
+    },
+    async setActiveLessonId(lessonId) {
+      activeLessonId = lessonId;
     },
   };
 }
@@ -375,6 +399,13 @@ export function createStorageLayer(
       );
     },
 
+    listDailyChallenges() {
+      return withFallback(
+        (database) => getAllRecords<DailyChallenge>(database, STORE_DAILY_CHALLENGES),
+        () => memory.listDailyChallenges(),
+      );
+    },
+
     getAttempts(dateKey) {
       return withFallback(
         (database) =>
@@ -387,6 +418,28 @@ export function createStorageLayer(
       return withFallback(
         (database) => putRecord(database, STORE_ATTEMPTS, attempt),
         () => memory.putAttempt(attempt),
+      );
+    },
+
+    getActiveLessonId() {
+      return withFallback(
+        async (database) => {
+          const record = await getRecord<{ key: string; value: string }>(
+            database,
+            STORE_META,
+            META_ACTIVE_LESSON_ID_KEY,
+          );
+          return record?.value;
+        },
+        () => memory.getActiveLessonId(),
+      );
+    },
+
+    setActiveLessonId(lessonId) {
+      return withFallback(
+        (database) =>
+          putRecord(database, STORE_META, { key: META_ACTIVE_LESSON_ID_KEY, value: lessonId }),
+        () => memory.setActiveLessonId(lessonId),
       );
     },
   };

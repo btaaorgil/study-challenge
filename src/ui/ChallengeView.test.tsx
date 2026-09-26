@@ -74,12 +74,16 @@ describe("ChallengeView: local-date dateKey computation (Requirement 9.5)", () =
       />,
     );
 
+    // The one-by-one question flow shows exactly one question card at a
+    // time (with a "Question 1 of 5" progress bar), not all 5 at once.
     await waitFor(() => {
-      expect(screen.getAllByTestId("question-card")).toHaveLength(5);
+      expect(screen.getAllByTestId("question-card")).toHaveLength(1);
     });
+    expect(screen.getByText("Question 1 of 5")).toBeInTheDocument();
 
     const persisted = await storage.getDailyChallenge(formatLocalDate(fixedDate));
     expect(persisted).toBeDefined();
     expect(persisted?.dateKey).toBe("2025-01-15");
+    expect(persisted?.questions).toHaveLength(5);
   });
 });

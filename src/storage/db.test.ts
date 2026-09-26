@@ -189,3 +189,101 @@ describe("Storage_Layer write-then-read ordering (Requirement 9.1)", () => {
     expect(attempts).toEqual([attempt]);
   });
 });
+
+describe("Storage_Layer listDailyChallenges (Study Calendar support)", () => {
+  it("returns every persisted Daily_Challenge", async () => {
+    const { storage } = createStorageLayer(new IDBFactory(), freshDbName());
+    await storage.init();
+
+    const challengeA = { dateKey: "2025-01-15", lessonId: "lesson-1", questions: [] };
+    const challengeB = { dateKey: "2025-01-16", lessonId: "lesson-1", questions: [] };
+    await storage.putDailyChallenge(challengeA);
+    await storage.putDailyChallenge(challengeB);
+
+    const all = await storage.listDailyChallenges();
+    expect(all).toHaveLength(2);
+    expect(all).toEqual(
+      expect.arrayContaining([challengeA, challengeB]),
+    );
+  });
+
+  it("returns an empty array when nothing has been persisted", async () => {
+    const { storage } = createStorageLayer(new IDBFactory(), freshDbName());
+    await storage.init();
+    await expect(storage.listDailyChallenges()).resolves.toEqual([]);
+  });
+});
+
+describe("Storage_Layer active-lesson-id pointer (Add Lesson support)", () => {
+  it("returns undefined before it has ever been set", async () => {
+    const { storage } = createStorageLayer(new IDBFactory(), freshDbName());
+    await storage.init();
+    await expect(storage.getActiveLessonId()).resolves.toBeUndefined();
+  });
+
+  it("persists and round-trips a set active lesson id", async () => {
+    const { storage } = createStorageLayer(new IDBFactory(), freshDbName());
+    await storage.init();
+
+    await storage.setActiveLessonId("custom-lesson-42");
+    await expect(storage.getActiveLessonId()).resolves.toBe("custom-lesson-42");
+  });
+
+  it("survives across separate StorageLayer instances against the same underlying database", async () => {
+    const factory = new IDBFactory();
+    const dbName = freshDbName();
+
+    const { storage: writer } = createStorageLayer(factory, dbName);
+    await writer.init();
+    await writer.setActiveLessonId("custom-lesson-99");
+
+    const { storage: reader } = createStorageLayer(factory, dbName);
+    await reader.init();
+    await expect(reader.getActiveLessonId()).resolves.toBe("custom-lesson-99");
+  });
+
+  it("also works via the in-memory fallback adapter when degraded", async () => {
+    const { storage } = createStorageLayer(undefined, freshDbName());
+    await storage.init(); // degrades to unsupported
+
+    await storage.setActiveLessonId("in-memory-lesson");
+    await expect(storage.getActiveLessonId()).resolves.toBe("in-memory-lesson");
+  });
+});
+
+describe("Storage_Layer schema v2 migration (meta store)", () => {
+  it("adds the meta store when upgrading a v1 database that predates it", async () => {
+    const factory = new IDBFactory();
+    const dbName = freshDbName();
+
+    // Manually open at version 1 to simulate a pre-existing v1 database,
+    // mirroring the v1 schema (lessons, dailyChallenges, attempts only).
+    await new Promise<void>((resolve, reject) => {
+      const request = factory.open(dbName, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        db.createObjectStore("lessons", { keyPath: "id" });
+        db.createObjectStore("dailyChallenges", { keyPath: "dateKey" });
+        const attempts = db.createObjectStore("attempts", { keyPath: "id" });
+        attempts.createIndex("by_dateKey", "dateKey");
+        attempts.createIndex("by_question", ["dateKey", "questionId"]);
+      };
+      request.onsuccess = () => {
+        request.result.close();
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    });
+
+    // Now open through the real Storage_Layer (current DB_VERSION, 2+),
+    // which must run the v2 upgrade step and add the `meta` store without
+    // disturbing the pre-existing v1 stores/data.
+    const { storage, getStatus } = createStorageLayer(factory, dbName);
+    await storage.init();
+    expect(getStatus()).toEqual({ kind: "ok" });
+
+    // The active-lesson-id pointer (backed by `meta`) works post-migration.
+    await storage.setActiveLessonId("post-migration-lesson");
+    await expect(storage.getActiveLessonId()).resolves.toBe("post-migration-lesson");
+  });
+});
