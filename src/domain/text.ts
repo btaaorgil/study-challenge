@@ -13,7 +13,8 @@ const STOPWORDS = new Set(
     "they this those through thus to too two under until up upon us use used uses using very via " +
     "was we were what when where whether which while who whom whose why will with within without " +
     "would yet you your yours also called known called means mean usually always never something " +
-    "things thing way ways well new first second third lot lots really"
+    "things thing way ways well new first second third lot lots really since beyond farther " +
+    "further today enough almost basically"
   ).split(/\s+/),
 );
 
