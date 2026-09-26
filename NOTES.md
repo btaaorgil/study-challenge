@@ -39,6 +39,21 @@ Log of Kiro features used during this project, for the final submission form.
 - Why: catches regressions in the pure scoring/grading/storage engines the moment they're saved,
   instead of waiting for a manual test run or CI.
 
+## Property-Based Testing
+
+### Lesson 4: Property-Based Tests - Lesson validation & selection
+- Implemented `validateLesson` and `selectActiveLesson` in `src/domain/lesson.ts` (Tasks 4.1, 4.4),
+  plus the data model types in `src/domain/types.ts` (Task 3.1).
+- Wrote property-based tests with `fast-check` in `src/domain/lesson.property.test.ts`, covering
+  design.md's Property 1, 2, and 4 (200 runs each):
+  - **Property 1** - a Lesson is section-count-valid if and only if it has exactly 4 sections.
+  - **Property 2** - a Lesson_Section is field-valid if and only if its trimmed title (1-100),
+    trimmed explanation (1-2000), and concept count (1-20) are all in bounds, probed with
+    empty/whitespace/boundary/over-length generated strings.
+  - **Property 4** - `selectActiveLesson` returns the Sample_Lesson if and only if no non-sample
+    stored lesson validates; otherwise it returns a lesson that does validate.
+- All 9 tests (2 smoke + 7 property/example tests) pass; build and `npm audit` stayed clean.
+
 ## Vibe / Agentic coding
 - (not yet used)
 

@@ -21,29 +21,29 @@ This plan implements the Daily Study Challenge in four stages, mirroring design.
 - [ ] 2. Checkpoint - ensure build and test harness run cleanly
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 3. Define core data model types
-  - [ ] 3.1 Create TypeScript interfaces for the data model
+- [x] 3. Define core data model types
+  - [x] 3.1 Create TypeScript interfaces for the data model
     - Implement `Concept`, `LessonSection`, `Lesson`, `AnswerOption`, `Question`, `DailyChallenge`, `Attempt` exactly as specified in design.md's Data Models section
     - _Requirements: 1.1, 1.2; Design: Data Models_
 
-- [ ] 4. Implement Lesson validation and active-lesson selection
-  - [ ] 4.1 Implement `validateLesson`
+- [x] 4. Implement Lesson validation and active-lesson selection
+  - [x] 4.1 Implement `validateLesson`
     - Check exactly 4 sections; each section's trimmed title (1-100 chars), trimmed explanation (1-2000 chars), and concept count (1-20); collect all violations (not just the first) into `errors`
     - _Requirements: 1.1, 1.2, 1.4, 1.5; Design: Domain: validateLesson_
 
-  - [ ]* 4.2 Write property test for Lesson section-count validity
+  - [x]* 4.2 Write property test for Lesson section-count validity
     - **Property 1: Lesson section-count validity**
     - **Validates: Requirements 1.1, 1.4**
 
-  - [ ]* 4.3 Write property test for Lesson section field validity
+  - [x]* 4.3 Write property test for Lesson section field validity
     - **Property 2: Lesson section field validity**
     - **Validates: Requirements 1.2, 1.5**
 
-  - [ ] 4.4 Implement `selectActiveLesson`
+  - [x] 4.4 Implement `selectActiveLesson`
     - Return the first stored lesson (excluding the sample) that passes `validateLesson`; fall back to `SAMPLE_LESSON` if none qualifies
     - _Requirements: 2.3; Design: Domain: selectActiveLesson_
 
-  - [ ]* 4.5 Write property test for active lesson selection fallback
+  - [x]* 4.5 Write property test for active lesson selection fallback
     - **Property 4: Active lesson selection falls back to the Sample_Lesson**
     - **Validates: Requirements 2.3**
 
