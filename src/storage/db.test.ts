@@ -148,8 +148,11 @@ describe("Storage_Layer IndexedDB failure modes (Requirements 9.3, 9.4)", () => 
 
     const dbName = freshDbName();
     const { storage, getStatus } = createStorageLayer(quotaExceededFactory, dbName);
+    // init() itself now performs a write (seeding SAMPLE_LESSON if no other
+    // lesson qualifies), so with every transaction() patched to throw, the
+    // very first write already triggers degradation during init().
     await storage.init();
-    expect(getStatus()).toEqual({ kind: "ok" });
+    expect(getStatus()).toMatchObject({ kind: "degraded", reason: "quota-exceeded" });
 
     // The write fails and is classified as quota-exceeded, then transparently
     // falls back to the in-memory adapter so the caller still succeeds (Req 9.4).

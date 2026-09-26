@@ -205,27 +205,27 @@ This plan implements the Daily Study Challenge in four stages, mirroring design.
 - [x] 15. Checkpoint - ensure all UI tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 16. Author and integrate the Sample_Lesson
-  - [ ] 16.1 Author `sampleLesson.ts` content
+- [x] 16. Author and integrate the Sample_Lesson
+  - [x] 16.1 Author `sampleLesson.ts` content
     - Hand-author `SAMPLE_LESSON`: exactly 4 `LessonSection`s, each with a title, explanation, and 1-20 concepts satisfying `validateLesson`'s bounds
     - _Requirements: 2.4; Design: Sample_Lesson_
 
-  - [ ]* 16.2 Write unit test asserting `SAMPLE_LESSON` passes `validateLesson`
+  - [x]* 16.2 Write unit test asserting `SAMPLE_LESSON` passes `validateLesson`
     - _Requirements: 2.4_
 
-  - [ ] 16.3 Wire `Storage_Layer.init()` to seed `SAMPLE_LESSON`
+  - [x] 16.3 Wire `Storage_Layer.init()` to seed `SAMPLE_LESSON`
     - On `init()`, call `listLessons()`; if no lesson other than the sample validates, idempotently `putLesson(SAMPLE_LESSON)` (safe to re-run since `id` is the key)
     - _Requirements: 2.1, 2.3; Design: Sample_Lesson_
 
-  - [ ]* 16.4 Write unit test for zero-network, zero-prior-state sample availability
+  - [x]* 16.4 Write unit test for zero-network, zero-prior-state sample availability
     - Mock `fetch`/`XMLHttpRequest` and assert never called; assert the sample lesson is available on a fresh `init()` with no prior storage state
     - _Requirements: 2.1, 2.2_
 
-  - [ ]* 16.5 Write end-to-end smoke test for the full daily-challenge flow
+  - [x]* 16.5 Write end-to-end smoke test for the full daily-challenge flow
     - Using `SAMPLE_LESSON` with network mocked: generate the Daily_Challenge, answer all 5 questions, verify grading and score, verify persistence through the Storage_Layer, and assert zero network calls throughout
     - _Requirements: 10.2, 10.3; Design: Testing Strategy_
 
-- [ ] 17. Final checkpoint - ensure all tests pass
+- [x] 17. Final checkpoint - ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

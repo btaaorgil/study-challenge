@@ -131,6 +131,38 @@ Log of Kiro features used during this project, for the final submission form.
   (0 vulnerabilities). Note: `App.tsx` doesn't render `ChallengeView` yet -- that wiring happens in
   Task 16 once `SAMPLE_LESSON` exists to pass in as a real `Lesson`.
 
+### Lesson 4 (cont'd): Sample_Lesson integration and Phase 1 wrap-up (Tasks 16-17)
+- Hand-authored `src/data/sampleLesson.ts`: a real study lesson on Web Fundamentals (HTTP, the
+  DOM, Git, Big-O), 4 sections x 3-4 concepts each, every concept's `sourceQuote` an exact
+  substring of its own `text`, satisfying `validateLesson` with zero errors.
+- Wired `Storage_Layer.init()` (`src/storage/db.ts`) to seed `SAMPLE_LESSON` whenever no other
+  stored lesson validates, using the storage layer's own fallback-aware methods so seeding works
+  identically whether IndexedDB is available or already degraded to in-memory. Idempotent: re-running
+  `init()` never duplicates the seed since `id` is the key.
+- Wired `src/App.tsx` to call `storage.init()`, resolve the active lesson via `selectActiveLesson`,
+  and render the real `ChallengeView` -- the app is now fully playable end-to-end with the sample
+  lesson, no API key or account needed.
+- Tests added:
+  - `sampleLesson.test.ts` - `SAMPLE_LESSON` passes `validateLesson` and every concept's source
+    quote is a real substring of its own text.
+  - `sampleLessonSeeding.test.ts` - seeding is idempotent, doesn't clobber an existing qualifying
+    non-sample lesson, and requires zero `fetch` calls to become available on a fresh `init()`.
+  - `smokeEndToEnd.test.ts` - the full loop (generate -> answer all 5, 3 correct/2 wrong on
+    purpose -> grade -> score (60%) -> persist -> reload stably) against a real
+    `fake-indexeddb`-backed Storage_Layer, with `fetch` mocked to throw if ever called, asserting
+    zero network calls throughout (Requirements 10.2, 10.3).
+- Fixed one test that assumed `init()` performed no writes -- now that `init()` seeds
+  `SAMPLE_LESSON`, a quota-exceeded-write simulation surfaces during `init()` itself rather than on
+  a later explicit write; updated the test's expectations to match this (correct) behavior instead
+  of changing the implementation.
+- All 62 tests pass (final checkpoint 17); production build (`tsc -b && vite build`) succeeds
+  (38 modules now bundled, up from 26, confirming `ChallengeView` and its full dependency tree are
+  actually reachable from `App.tsx`); `npm audit` stayed clean (0 vulnerabilities). Verified `npm
+  run dev` starts and serves the app shell correctly.
+- **Phase 1 (core flow) is complete**: lesson structure, bundled sample lesson, daily challenge
+  generation, instant grading with source traceability, deterministic first-attempt-only scoring,
+  and local-only IndexedDB persistence are all implemented, tested, and wired into a playable app.
+
 ## Vibe / Agentic coding
 - (not yet used)
 

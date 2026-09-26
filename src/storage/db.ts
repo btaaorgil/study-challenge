@@ -4,6 +4,8 @@
 // 9.3/9.4 (graceful degradation to in-memory on unsupported/blocked/quota-exceeded).
 
 import type { Attempt, DailyChallenge, Lesson } from "../domain/types";
+import { validateLesson } from "../domain/lesson";
+import { SAMPLE_LESSON } from "../data/sampleLesson";
 
 const DB_NAME = "daily-challenge-db";
 const DB_VERSION = 1;
@@ -316,12 +318,25 @@ export function createStorageLayer(
     async init() {
       if (!indexedDBFactory) {
         degrade("unsupported", "IndexedDB is not available in this environment.");
-        return;
+      } else {
+        try {
+          db = await openDatabase(indexedDBFactory, dbName);
+        } catch (err) {
+          degrade(classifyOpenError(err), describeError(err));
+        }
       }
-      try {
-        db = await openDatabase(indexedDBFactory, dbName);
-      } catch (err) {
-        degrade(classifyOpenError(err), describeError(err));
+
+      // Seed the bundled Sample_Lesson if no other lesson in storage
+      // validates (Req 2.1, 2.3). Idempotent: `id` is the key, so re-running
+      // init() never duplicates it. Uses the fallback-aware `storage.*`
+      // methods below (not the raw `db`), so this works identically whether
+      // IndexedDB is available or we've already degraded to in-memory.
+      const storedLessons = await storage.listLessons();
+      const hasQualifyingNonSampleLesson = storedLessons.some(
+        (lesson) => lesson.id !== SAMPLE_LESSON.id && validateLesson(lesson).valid,
+      );
+      if (!hasQualifyingNonSampleLesson) {
+        await storage.putLesson(SAMPLE_LESSON);
       }
     },
 
