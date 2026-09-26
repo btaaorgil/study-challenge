@@ -28,9 +28,13 @@ function App() {
 
   if (!lesson) {
     return (
-      <main>
-        <p role="status">Loading&hellip;</p>
-      </main>
+      <div className="page">
+        <main className="app-shell">
+          <p className="loading-state" role="status">
+            Loading&hellip;
+          </p>
+        </main>
+      </div>
     );
   }
 

@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { formatLocalDate, getOrCreateDailyChallenge } from "../domain/challenge";
-import type { Attempt, DailyChallenge, Lesson } from "../domain/types";
+import type { Attempt, DailyChallenge, Lesson, LessonSection } from "../domain/types";
 import type { StorageLayer, StorageStatus } from "../storage/db";
 import { QuestionCard } from "./QuestionCard";
 import { ScoreBadge } from "./ScoreBadge";
@@ -70,31 +70,92 @@ export function ChallengeView({
 
   if (!state) {
     return (
-      <main className="challenge-view">
-        <p role="status">Loading today&apos;s challenge&hellip;</p>
-      </main>
+      <div className="page">
+        <main className="app-shell">
+          <p className="loading-state" role="status">
+            Loading today&apos;s challenge&hellip;
+          </p>
+        </main>
+      </div>
     );
   }
 
   const { challenge, attempts, dateKey } = state;
   const attemptByQuestionId = new Map(attempts.map((a) => [a.questionId, a]));
+  const sectionPills = getSectionPills(challenge, lesson);
 
   return (
-    <main className="challenge-view">
+    <div className="page">
       <StorageFallbackBanner status={storageStatus} />
-      <h1>Daily Study Challenge</h1>
-      <ScoreBadge challenge={challenge} attempts={attempts} />
-      <ol className="question-list">
-        {challenge.questions.map((question) => (
-          <QuestionCard
-            key={question.id}
-            question={question}
-            priorAttempt={attemptByQuestionId.get(question.id)}
-            dateKey={dateKey}
-            onAnswered={handleAnswered}
-          />
-        ))}
-      </ol>
-    </main>
+      <main className="app-shell">
+        <header className="app-header">
+          <h1 className="app-title">Astra</h1>
+          <p className="app-subtitle">{formatDisplayDate(dateKey)}</p>
+          {sectionPills.length > 0 && (
+            <ul className="section-pills" aria-label="Lesson sections covered today">
+              {sectionPills.map(({ sectionId, label }) => (
+                <li key={sectionId} className="section-pill">
+                  {label}
+                </li>
+              ))}
+            </ul>
+          )}
+        </header>
+        <ScoreBadge challenge={challenge} attempts={attempts} />
+        <ol className="question-list">
+          {challenge.questions.map((question) => (
+            <QuestionCard
+              key={question.id}
+              question={question}
+              priorAttempt={attemptByQuestionId.get(question.id)}
+              dateKey={dateKey}
+              onAnswered={handleAnswered}
+            />
+          ))}
+        </ol>
+      </main>
+    </div>
   );
+}
+
+/**
+ * Short, scannable pill labels for known sample-lesson sections (Req: header
+ * shows section pills like "HTTP, DOM, Git, Big-O" rather than full titles).
+ * Purely presentational -- falls back to a section's first word for any
+ * lesson/section this map doesn't recognize, so custom lessons (Req 2.3)
+ * still render a reasonable pill instead of breaking.
+ */
+const SECTION_SHORT_LABELS: Record<string, string> = {
+  "sample-section-http": "HTTP",
+  "sample-section-dom": "DOM",
+  "sample-section-git": "Git",
+  "sample-section-bigo": "Big-O",
+};
+
+function toShortLabel(section: LessonSection): string {
+  return SECTION_SHORT_LABELS[section.id] ?? section.title.split(" ")[0];
+}
+
+interface SectionPill {
+  sectionId: string;
+  label: string;
+}
+
+/** The distinct Lesson_Sections today's questions were drawn from, in lesson order, as pill data. */
+function getSectionPills(challenge: DailyChallenge, lesson: Lesson): SectionPill[] {
+  const sectionIdsUsedToday = new Set(challenge.questions.map((q) => q.sectionId));
+  return lesson.sections
+    .filter((section) => sectionIdsUsedToday.has(section.id))
+    .map((section) => ({ sectionId: section.id, label: toShortLabel(section) }));
+}
+
+/** Formats a "YYYY-MM-DD" dateKey as a friendly local date, e.g. "Monday, January 15". */
+function formatDisplayDate(dateKey: string): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 }

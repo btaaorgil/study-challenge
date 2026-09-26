@@ -1,0 +1,434 @@
+/*
+ * Astra — global stylesheet.
+ *
+ * Design direction: Linear/Notion-inspired app-surface restraint (calm
+ * hierarchy, one accent color, few colors, minimal chrome) per the
+ * design-system-scaffold power's ui-guidelines.md ("App Surfaces") and
+ * design-guidelines.md (WCAG POUR, Gestalt/visual-hierarchy heuristics).
+ * See NOTES.md "## Powers (Lesson 5)" for how that power was used here.
+ *
+ * Typography intentionally lists "Inter" first in the font stack without a
+ * network @import/<link> — Inter renders if present locally, otherwise the
+ * stack falls through to system-ui. This keeps typography aligned with the
+ * "Inter / system-ui" request while avoiding any network dependency, in the
+ * same local-only spirit as .kiro/steering/storage.md.
+ */
+
+:root {
+  /* Design tokens (light) */
+  --color-bg: #fbfbfa;
+  --color-bg-elevated: #ffffff;
+  --color-border: #e6e4e1;
+  --color-border-strong: #d6d3ce;
+  --color-text: #1f1e1c;
+  --color-text-muted: #5b5954;
+  --color-text-faint: #8a877f;
+
+  --color-accent: #2f6feb;
+  --color-accent-hover: #2558c4;
+  --color-accent-tint: #eaf1fd;
+
+  --color-success: #1a7f4b;
+  --color-success-tint: #eaf7ef;
+  --color-success-border: #b8e6c9;
+
+  --color-danger: #c23b3b;
+  --color-danger-tint: #fdeeee;
+  --color-danger-border: #f3c6c6;
+
+  --color-warning: #94660f;
+  --color-warning-tint: #fdf3e0;
+  --color-warning-border: #f0dca8;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(20, 19, 17, 0.05);
+  --shadow-md: 0 6px 20px rgba(20, 19, 17, 0.08);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --max-width: 680px;
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #17181a;
+    --color-bg-elevated: #1e1f22;
+    --color-border: #2c2d30;
+    --color-border-strong: #3c3d41;
+    --color-text: #ecebe8;
+    --color-text-muted: #a6a39c;
+    --color-text-faint: #7b786f;
+
+    --color-accent: #6c9bf2;
+    --color-accent-hover: #8bb0f5;
+    --color-accent-tint: rgba(108, 155, 242, 0.14);
+
+    --color-success: #57cf8f;
+    --color-success-tint: rgba(87, 207, 143, 0.12);
+    --color-success-border: rgba(87, 207, 143, 0.35);
+
+    --color-danger: #f0716c;
+    --color-danger-tint: rgba(240, 113, 108, 0.12);
+    --color-danger-border: rgba(240, 113, 108, 0.35);
+
+    --color-warning: #e5b158;
+    --color-warning-tint: rgba(229, 177, 88, 0.12);
+    --color-warning-border: rgba(229, 177, 88, 0.35);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Reset -------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body,
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+li,
+blockquote,
+fieldset,
+legend {
+  margin: 0;
+  padding: 0;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+fieldset {
+  border: none;
+}
+
+legend {
+  display: block;
+  float: none;
+  width: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* Base ----------------------------------------------------------------- */
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Page shell ------------------------------------------------------------- */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell {
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--space-10) var(--space-5);
+}
+
+.loading-state {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-10) 0;
+  font-size: 0.9375rem;
+}
+
+/* Header ------------------------------------------------------------- */
+
+.app-header {
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+.app-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.app-subtitle {
+  font-size: 0.9375rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-5);
+}
+
+.section-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.section-pill {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* Score badge ---------------------------------------------------------- */
+
+.score-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: fit-content;
+  margin: 0 auto var(--space-6);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.score-badge strong {
+  font-weight: 700;
+}
+
+.score-badge--low {
+  background: var(--color-danger-tint);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger);
+}
+
+.score-badge--mid {
+  background: var(--color-warning-tint);
+  border-color: var(--color-warning-border);
+  color: var(--color-warning);
+}
+
+.score-badge--high {
+  background: var(--color-success-tint);
+  border-color: var(--color-success-border);
+  color: var(--color-success);
+}
+
+/* Question list / cards ------------------------------------------------- */
+
+.question-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.question-card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+
+.question-prompt {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+}
+
+.option-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.option-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.option-label:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg);
+}
+
+.option-label[data-selected="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-tint);
+}
+
+fieldset:disabled .option-label {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.option-label input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: var(--color-accent);
+}
+
+.option-error {
+  color: var(--color-danger);
+  font-size: 0.875rem;
+  margin-top: var(--space-2);
+}
+
+.submit-answer {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  background: var(--color-accent);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  transition: background-color 0.15s ease;
+}
+
+.submit-answer:hover {
+  background: var(--color-accent-hover);
+}
+
+.submit-answer:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Feedback panel --------------------------------------------------------- */
+
+.feedback-panel {
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+}
+
+.feedback-panel.correct {
+  background: var(--color-success-tint);
+  border-color: var(--color-success-border);
+}
+
+.feedback-panel.incorrect {
+  background: var(--color-danger-tint);
+  border-color: var(--color-danger-border);
+}
+
+.feedback-status {
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.feedback-explanation {
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+  margin-bottom: var(--space-3);
+}
+
+.feedback-source-quote {
+  border-left: 3px solid var(--color-accent);
+  padding-left: var(--space-4);
+  font-style: italic;
+  font-size: 0.9375rem;
+  color: var(--color-text);
+}
+
+/* Storage fallback banner ------------------------------------------------ */
+
+.storage-fallback-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-warning-tint);
+  border-bottom: 1px solid var(--color-warning-border);
+  color: var(--color-warning);
+  font-size: 0.875rem;
+}
+
+.storage-fallback-banner p {
+  margin: 0;
+}
+
+.storage-fallback-banner button {
+  flex-shrink: 0;
+  appearance: none;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--color-warning-border);
+  color: var(--color-warning);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+
+.storage-fallback-banner button:hover {
+  background: rgba(0, 0, 0, 0.04);
+}

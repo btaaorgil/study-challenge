@@ -18,7 +18,15 @@ export function FeedbackPanel({
   return (
     // aria-live="polite" so screen readers announce the result as soon as it
     // appears, without interrupting whatever the user was doing (Req 4.2).
-    <div className="feedback-panel" role="status" aria-live="polite" data-testid="feedback-panel">
+    // The correct/incorrect tint is a visual reinforcement only -- the status
+    // text itself ("Correct!"/"Incorrect.") always carries the meaning, so
+    // color is never the sole information carrier.
+    <div
+      className={`feedback-panel ${isCorrect ? "correct" : "incorrect"}`}
+      role="status"
+      aria-live="polite"
+      data-testid="feedback-panel"
+    >
       <p className="feedback-status">
         {isCorrect ? "Correct!" : "Incorrect."} The correct answer is:{" "}
         <strong>{correctOptionText}</strong>

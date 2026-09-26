@@ -163,6 +163,66 @@ Log of Kiro features used during this project, for the final submission form.
   generation, instant grading with source traceability, deterministic first-attempt-only scoring,
   and local-only IndexedDB persistence are all implemented, tested, and wired into a playable app.
 
+## Powers (Lesson 5)
+
+### Lesson 5: Kiro Powers - design-system-scaffold
+- Installed the **design-system-scaffold** power from the Kiro powers registry (MIT licensed,
+  by DAE-UX) to review our interface standards and accessibility before doing the visual overhaul.
+- **Matching keywords**: the power's activation keywords include `design-system`, `accessibility`,
+  `ui`, and `theming` -- all directly hit by this task's ask ("give Astra a sleek, modern... design"
+  + accessibility review).
+- **Usage**: activated the power and read its `design-guidelines.md` and `ui-guidelines.md`
+  steering files (not the shadcn/Tailwind component specs, since Astra uses a hand-rolled stack per
+  `.kiro/steering/ui.md`, not shadcn -- the power's *heuristics* apply regardless of the underlying
+  component library). Concretely used:
+  - The **"App Surfaces"** composition guidance ("Linear-style restraint: calm surface hierarchy,
+    strong typography and spacing, few colors, dense but readable information, minimal chrome" +
+    "avoid dashboard-card mosaics, decorative gradients, multiple competing accent colors") --
+    directly shaped the restyle's one-accent-color, low-chrome direction.
+  - The **Accessibility Standards (WCAG POUR)** table and **Verification Checklist** (Phase 5) --
+    checked visible focus (`:focus-visible` outlines), color never as the sole information carrier
+    (correct/incorrect always stated in text, not just tint), sufficient contrast, and native
+    keyboard-operable controls (radio inputs, buttons) throughout the new CSS.
+  - **Heuristic 6.2** (sparse emphasis, uniform styling) and **8.6** (color accessibility) directly
+    informed the Score Badge's dynamic color tiers -- color changes are decorative reinforcement on
+    top of the text/number, never instead of it.
+- Also read `default-theme.md` (shadCN "New York" theme reference) for token-naming conventions
+  (background/foreground/border/muted pairs, light+dark mode pairs) even though Astra's actual CSS
+  variables are custom-named for its own plain-CSS stack rather than the shadCN contract.
+
+## Visual Overhaul: Astra restyle (Linear/Notion-inspired)
+- Replaced all unstyled raw HTML with a single global stylesheet, `src/index.css` (~370 lines),
+  imported once from `main.tsx`. No CSS framework added -- plain CSS custom properties, consistent
+  with the project's minimal-dependency approach.
+- **Typography**: `Inter, system-ui, -apple-system, "Segoe UI", Roboto, ... sans-serif` stack (no
+  network `@import`/`<link>`, keeping the app's zero-network-for-static-assets posture); crisp
+  `line-height: 1.55`; a small type scale (1.875rem title / 1.0625rem question / 0.9375rem body /
+  0.8125rem pill) for clear hierarchy per heuristic 2.10.
+- **Design tokens**: CSS custom properties for color, spacing, radius, and shadow in `:root`, with
+  a `prefers-color-scheme: dark` override block -- both light and dark values defined for every
+  token, per the power's "components must support both light and dark modes" rule.
+- **Header**: centered "Astra" title, today's date (formatted from `dateKey` via
+  `toLocaleDateString`), and section pills (HTTP / DOM / Git / Big-O) computed from which
+  Lesson_Sections today's 5 questions actually came from -- not hardcoded, so a future custom
+  lesson still renders correct pills.
+- **Question cards**: `.question-card` (subtle 1px border, `border-radius: 16px`, generous 24px
+  padding, soft shadow) containing custom `.option-label` radio tiles with hover (border darkens)
+  and `data-selected="true"` (accent border + tint background) states, all still native
+  `<input type="radio">` under the hood for full keyboard/AT support.
+- **Feedback panel**: `.feedback-panel.correct` / `.incorrect` tinted callout boxes (green/red
+  tint + border), with a left-accent-border italic pull-quote style for `sourceQuote`.
+- **Score badge**: pill-shaped, with `--low` (red, <50%), `--mid` (amber, 50-79%), `--high`
+  (green, >=80%) color variants -- purely decorative on top of the always-present text/number.
+- Fixed a React key-uniqueness warning surfaced by the existing `ChallengeView.test.tsx` fixture
+  (generic "Section A"/"Section B" titles collapsed to the same fallback short-label) by keying
+  section pills on `sectionId` instead of the derived display label.
+- Verified against the design-system-scaffold power's Phase 1/2/4/5 Verification Checklist items:
+  visual hierarchy, grouping via cards/pills, focus-visible outlines, color-never-sole-carrier,
+  and native/keyboard-operable controls throughout.
+- All 62 tests still pass after the restyle (`npm run test`); production build succeeds
+  (`npm run build`, CSS now bundled at 6.87 kB / 1.89 kB gzipped); `npm audit` stayed clean
+  (0 vulnerabilities).
+
 ## Vibe / Agentic coding
 - (not yet used)
 

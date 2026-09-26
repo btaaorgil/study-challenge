@@ -82,7 +82,12 @@ export function QuestionCard({ question, priorAttempt, dateKey, onAnswered }: Qu
                 ? priorAttempt?.selectedOptionId === option.id
                 : selectedOptionId === option.id;
               return (
-                <label key={option.id} htmlFor={optionInputId} className="option-label">
+                <label
+                  key={option.id}
+                  htmlFor={optionInputId}
+                  className="option-label"
+                  data-selected={isSelected}
+                >
                   <input
                     type="radio"
                     id={optionInputId}

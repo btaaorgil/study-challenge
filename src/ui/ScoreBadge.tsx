@@ -11,6 +11,13 @@ export interface ScoreBadgeProps {
   attempts: readonly Attempt[];
 }
 
+/** Purely presentational color tier -- has no bearing on the Score value itself. */
+function scoreColorTier(score: number): "low" | "mid" | "high" {
+  if (score < 50) return "low";
+  if (score < 80) return "mid";
+  return "high";
+}
+
 export function ScoreBadge({ challenge, attempts }: ScoreBadgeProps) {
   if (attempts.length === 0) {
     // Requirement 8.2: no Attempts yet for today -> literal "Not assessed yet".
@@ -24,9 +31,10 @@ export function ScoreBadge({ challenge, attempts }: ScoreBadgeProps) {
   // Requirement 8.3: recomputed from the pure Scoring_Engine on every render,
   // so it always reflects the latest attempts passed in.
   const score = calculateScore(challenge, attempts);
+  const tier = scoreColorTier(score);
 
   return (
-    <p className="score-badge" data-testid="score-badge">
+    <p className={`score-badge score-badge--${tier}`} data-testid="score-badge">
       Score: <strong>{score}%</strong>
     </p>
   );
