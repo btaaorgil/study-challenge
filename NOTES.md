@@ -321,13 +321,16 @@ Log of Kiro features used during this project, for the final submission form.
 ## MCP (Lesson 6)
 
 ### Lesson 6: MCP - fetch server for cited fun-fact research
-**Status: blocked, not yet complete.** This section documents what's configured so far and what's
-still outstanding.
+**Status: complete.**
 
-- Recommended server: [zcaceres/fetch-mcp](https://github.com/zcaceres/fetch-mcp) (`mcp-fetch-server`
-  on npm), MIT licensed, exposes `fetch_markdown`/`fetch_readable`/`fetch_html`/`fetch_json` tools
-  with built-in SSRF protection.
-- Recommended config for `.kiro/settings/mcp.json`:
+- Server used: [zcaceres/fetch-mcp](https://github.com/zcaceres/fetch-mcp) (`mcp-fetch-server` on
+  npm, v1.1.2, MIT licensed), exposing `fetch_markdown`/`fetch_readable`/`fetch_html`/`fetch_json`/
+  `fetch_txt`/`fetch_youtube_transcript` tools with built-in SSRF protection (blocks private/
+  localhost addresses and DNS rebinding).
+- **Setup history (for the record):** first attempt placed the config at `.kiro/mcp.json` and a
+  root-level `mcp.json`, neither of which Kiro reads. Correct location is
+  `.kiro/settings/mcp.json`, which the agent is blocked from writing directly (a Kiro safety rule
+  denies `fs_write` matching `.kiro/settings/...`), so the user created it by hand with:
   ```json
   {
     "mcpServers": {
@@ -340,23 +343,36 @@ still outstanding.
     }
   }
   ```
-- I (the agent) am blocked from writing to `.kiro/settings/` directly -- it's covered by a Kiro
-  safety rule (`deny fs_write matching ".kiro/settings/..."`). The user needs to create this file
-  themselves; once saved, the fetch MCP tool should become available in-session (reconnect via the
-  MCP Server view if it doesn't appear automatically).
-- Planned usage once available: call `fetch_readable`/`fetch_markdown` against a small set of
-  reputable sources (e.g. MDN, the official Git project history, W3C/IETF documents, a Big-O/complexity
-  reference) to pull real, checkable facts about HTTP, the DOM, Git, and Big-O -- one trivia or
-  history fact per bundled Sample_Lesson section. Each fact will be copied into
-  `src/data/funFacts.ts` as static data (see that file's header comment) with its exact source URL,
-  preserving Astra's zero-runtime-network posture: the MCP tool is only ever used at
-  authoring/build time, never from the deployed app.
-- `src/data/funFacts.ts` currently ships with an empty `FUN_FACTS` array and full plumbing
-  (`FunFactCard` component, section-keyed lookup, Easy/Normal-difficulty display logic in
-  `ChallengeView` and `ExamView`) already wired up and tested -- it will render real facts the
-  moment entries are added, with no code changes needed elsewhere.
-- This section will be updated with the actual tool calls, sources, and fetched content once
-  `.kiro/settings/mcp.json` is in place.
+  The workspace MCP panel initially only showed an unrelated, already-failing `real` server from
+  the *user-level* config (`~/.kiro/settings/mcp.json`) and didn't pick up the new workspace
+  `fetch` entry through the file watcher. The user resolved this by adding the `fetch` server
+  entry directly into `~/.kiro/settings/mcp.json` instead, after which the tool connected and its
+  `fetch_readable` etc. tools became available in-session.
+- **Tool calls made** (all via `fetch_readable`, which uses Mozilla Readability to strip nav/ads/
+  boilerplate and return the article body as Markdown):
+  - `fetch_readable("https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol")` -- HTTP's
+    1991 CERN origin and IETF/W3C standardization (RFC 9110-9113).
+  - `fetch_readable("https://en.wikipedia.org/wiki/Hyper_Text_Coffee_Pot_Control_Protocol")` --
+    the April 1, 1998 RFC 2324 joke spec that introduced HTTP 418 "I'm a teapot".
+  - `fetch_readable("https://en.wikipedia.org/wiki/Document_Object_Model")` -- the DOM's
+    browser-wars-era history and its every-piece-is-a-node model.
+  - `fetch_readable("https://git-scm.com/book/en/v2/Getting-Started-A-Short-History-of-Git")` --
+    Git's 2005 origin (Linux kernel team's BitKeeper fallout) and its original design goals
+    (speed, simple design, non-linear branching, fully distributed).
+  - `fetch_readable("https://en.wikipedia.org/wiki/Big_O_notation")` -- Big-O's origin with
+    Bachmann and Landau (the "O" is German "Ordnung") and its roots in mathematical analysis
+    before being adopted by computer science.
+  - (Also probed `https://en.wikipedia.org/wiki/Git` and `https://en.wikipedia.org/wiki/JavaScript`
+    while researching, but didn't end up sourcing a fact from either -- the Git book page and the
+    two Wikipedia articles above were a better direct match per section.)
+- **Result:** 8 cited facts (2 per Sample_Lesson section: HTTP, DOM, Git, Big-O; one `"history"`
+  and one `"trivia"` kind each) copied into `src/data/funFacts.ts`'s `FUN_FACTS` array as static
+  data, each with a `sourceLabel` and exact `sourceUrl`. No network call happens at runtime -- the
+  fetch MCP tool was only ever used here, at authoring time, exactly as planned; `FunFactCard`,
+  `ChallengeView`, and `ExamView` needed zero code changes since the plumbing was already wired to
+  read from this file.
+- All 103 existing tests still pass after populating the data (`npm run test`); no test asserted
+  `FUN_FACTS` was empty, so no test changes were needed here.
 
 ## Vibe / Agentic coding
 - (not yet used)
