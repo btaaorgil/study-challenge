@@ -22,6 +22,10 @@ Log of Kiro features used during this project, for the final submission form.
 - Docs: [requirements.md](kiro-spec://create?featureName=daily-challenge&documentType=requirements),
   [design.md](kiro-spec://create?featureName=daily-challenge&documentType=design),
   [tasks.md](kiro-spec://create?featureName=daily-challenge&documentType=tasks)
+- Task 1 (setup) executed: Vite + TypeScript (strict) + React 18 scaffolded by hand (interactive
+  `create-vite` wizard wouldn't run non-interactively in this shell), `src/{domain,storage,data,ui}`
+  folders created per design.md. Vitest + fast-check + fake-indexeddb configured; smoke test and
+  production build both verified passing with 0 npm audit vulnerabilities.
 
 ## Hooks
 

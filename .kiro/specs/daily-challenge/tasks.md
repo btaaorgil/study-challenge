@@ -6,13 +6,13 @@ This plan implements the Daily Study Challenge in four stages, mirroring design.
 
 ## Tasks
 
-- [ ] 1. Set up project scaffolding and testing infrastructure
-  - [ ] 1.1 Initialize Vite + TypeScript + React project structure
+- [x] 1. Set up project scaffolding and testing infrastructure
+  - [x] 1.1 Initialize Vite + TypeScript + React project structure
     - Scaffold the app with `vite` (react-ts template), configure `tsconfig.json` with strict mode
     - Create the folder structure from design.md: `src/storage/`, `src/domain/`, `src/data/`, `src/ui/`
     - _Requirements: N/A (project setup); Design: Tech Stack, Architecture_
 
-  - [ ] 1.2 Configure Vitest, fast-check, and fake-indexeddb test harness
+  - [x] 1.2 Configure Vitest, fast-check, and fake-indexeddb test harness
     - Add Vitest config (shared transform with Vite), install `fast-check` and `fake-indexeddb`
     - Add a test setup file that installs `fake-indexeddb`'s global `indexedDB` for the Storage_Layer's test environment
     - Write one trivial smoke test to confirm the harness runs
