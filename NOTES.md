@@ -374,6 +374,88 @@ Log of Kiro features used during this project, for the final submission form.
 - All 103 existing tests still pass after populating the data (`npm run test`); no test asserted
   `FUN_FACTS` was empty, so no test changes were needed here.
 
+## Custom Agents (Lesson 7)
+
+### Lesson 7: Custom Agents - quiz-auditor
+
+- Created `.kiro/agents/quiz-auditor.json`, a scoped, read-mostly QA agent whose only job is to
+  audit existing quiz content (Sample_Lesson concepts, generated Questions, Fun Facts) for rigor
+  and fidelity to this project's own rules -- it does not write features.
+- **Config fields used:**
+  - `name`: `quiz-auditor`; `description`: matches the audit-focused mandate above.
+  - `tools`: `["read", "write", "shell"]` -- `write` and `shell` are present in the pool but locked
+    down hard by `allowedTools`/`permissions` below rather than granted freely.
+  - `allowedTools`: `["read"]` only -- `write` and `shell` calls always require explicit permission
+    resolution rather than running silently, even though they're nominally in `tools`.
+  - `resources`: `file://` links to all three steering docs (`scoring.md`, `ui.md`, `storage.md`)
+    plus the domain ground-truth files the audit checks against
+    (`src/domain/types.ts`, `lesson.ts`, `challenge.ts`) and the two content files under audit
+    (`src/data/sampleLesson.ts`, `funFacts.ts`).
+  - `permissions.rules`: shell is allow-listed to `npm run test*` / `npm run build*` only, with a
+    trailing `{ "capability": "shell", "match": ["*"], "effect": "deny" }` catch-all so it's a
+    strict allow-list, not "everything else prompts." Writes are similarly allow-listed to
+    `NOTES.md` and `.kiro/specs/**` (recording findings) with a trailing deny-all, so the agent
+    physically cannot edit `src/**` even if asked to "just fix it" -- content fixes stay a human
+    decision.
+  - `prompt`: a five-part checklist (source-quote substring fidelity, section structural validity
+    per `validateLesson`, question rigor per `challenge.ts`'s generation logic, fun-fact citation
+    integrity, and cross-cutting respect for the three steering docs), plus a fixed structured
+    report format ending in a pass/warn/fail count.
+- **Honesty note on how the audit was actually run:** the `invoke_sub_agent` tool available to me
+  in this session only dispatches a fixed set of built-in sub-agents (context-gatherer,
+  general-task-execution, introspect, etc.) -- there's no mechanism for me to load and execute an
+  arbitrary saved `.kiro/agents/*.json` file programmatically. In the real Kiro IDE, `quiz-auditor`
+  is meant to be selected from the agent switcher in the chat UI by a person. To still produce a
+  genuine audit run rather than skip this, I dispatched `general-task-execution` with the exact
+  `prompt` text and resource scope copied verbatim from `quiz-auditor.json`, so it performed the
+  identical checklist. This is documented here rather than silently presented as "the custom agent
+  ran itself," since that would misrepresent what happened.
+
+### Audit results (sampleLesson.ts + funFacts.ts)
+
+Full run cross-checked against `npm run test` (103/103 passing) and `npm run build` (clean).
+**Verdict: 17 passed / 4 warnings / 1 failure.**
+
+- **PASS** - Source quote fidelity: all 13 Sample_Lesson concepts have a `sourceQuote` that's a
+  verified exact substring of their own `text`, with a non-empty `explanation`, satisfying
+  `challenge.ts`'s `isUsable` for all 13.
+- **WARN** - All 13 concepts set `sourceQuote` to their *entire* `text` verbatim rather than a
+  shorter fragment pulled from the section's `explanation` -- schema-legal, but a missed
+  opportunity for real traceability signal beyond an echo.
+- **PASS** - Section structural validity: exactly 4 sections, every title/explanation/concept-count
+  within `validateLesson`'s bounds (matches the existing `sampleLesson.test.ts` assertion).
+- **PASS** - No duplicate concept text lesson-wide; no same-section concept pairs are close enough
+  paraphrases to make a distractor ambiguously "also correct"; every concept's explanation
+  explains *why*, not just restates the fact.
+- **FAIL (real finding)** - Every generated question's 3 "wrong" options are themselves true
+  statements pulled verbatim from other concepts' `text` (per `challenge.ts`'s `buildQuestion`),
+  because Sample_Lesson contains zero false statements to draw distractors from. A question about
+  `sample-concept-http-get` shows POST/404/500 facts as "wrong" answers that are all individually
+  true HTTP facts -- the options aren't wrong, just about a different concept. This is a
+  generation-logic gap in `challenge.ts` (prompt wording + raw-fact distractor reuse), not
+  something a content-only edit to `sampleLesson.ts` can fix, and the auditor's permissions
+  correctly blocked it from touching `challenge.ts` itself -- flagged here for a human decision
+  instead of being silently patched.
+- **WARN** - The DOM, Git, and Big-O sections have only 3 concepts each (vs. HTTP's 4), so
+  `distractorCandidates` always has to pull 1 of 3 distractors from an unrelated section for those,
+  making that option trivially eliminable by topic alone. Suggested fix: add a 4th concept to each
+  of those three sections (well within the 1-20 limit) so same-section distractors are always
+  sufficient -- not applied yet, left as a follow-up.
+- **PASS** - Fun Fact citation integrity: all 8 facts reference a real `sectionId`, have a
+  non-empty specific `sourceLabel`, and a `sourceUrl` pointing at a specific page (not a bare
+  domain).
+- **WARN x2** - `fact-http-history`'s "RFC 9110-9113" framing may understate the modern set (HTTP/3
+  is RFC 9114) and `fact-dom-history`'s "W3C published its DOM recommendation in 2004" could read
+  as omitting DOM Level 1's earlier 1998 recommendation -- both flagged for a human citation
+  double-check rather than asserted as wrong, since the auditor can't browse the web itself.
+- **PASS** - Cross-cutting: no finding above suggests a scoring-logic change, a network call, or
+  UI text long enough to risk mobile truncation -- consistent with `scoring.md`/`storage.md`/
+  `ui.md`.
+- No files were changed as a result of this audit -- the two content-only findings that don't
+  require touching `challenge.ts` (trivial sourceQuote echoing, thin DOM/Git/Big-O distractor
+  pools) are left as documented follow-ups rather than applied unprompted, and the one real
+  generation-logic gap needs a `challenge.ts` change outside this audit's read/report-only scope.
+
 ## Vibe / Agentic coding
 - (not yet used)
 
