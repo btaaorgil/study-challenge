@@ -83,31 +83,31 @@ This plan implements the Daily Study Challenge in four stages, mirroring design.
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 7. Implement Daily_Challenge generation
-  - [ ] 7.1 Implement `selectQuestions` pure helper (`src/domain/challenge.ts`)
+  - [x] 7.1 Implement `selectQuestions` pure helper (`src/domain/challenge.ts`)
     - Flatten a lesson's concepts into a pool tagged with `sectionId`; filter out concepts lacking a derivable `explanation`/`sourceQuote`
     - Deterministically shuffle with a seeded PRNG (seed = `dateKey + ":" + lesson.id`, e.g. mulberry32) — no `Math.random()`
     - Select first 5 distinct concepts if pool size >= 5, otherwise round-robin-reuse the shuffled pool until 5 are produced
     - Build each `Question`: correct option from the concept's fact, 3 deterministically-drawn distractor options, options shuffled into a seeded order, `sectionId`/`explanation`/`sourceQuote` attached
     - _Requirements: 3.2, 3.3, 3.4, 3.6, 5.3, 5.4; Design: Domain: generateDailyChallenge_
 
-  - [ ]* 7.2 Write property test for generated Daily_Challenge shape
+  - [x]* 7.2 Write property test for generated Daily_Challenge shape
     - **Property 5: Generated Daily_Challenge has the required shape**
     - **Validates: Requirements 3.1, 3.3, 3.4**
 
-  - [ ]* 7.3 Write property test for concept usage distinctness and reuse
+  - [x]* 7.3 Write property test for concept usage distinctness and reuse
     - **Property 6: Concept usage respects distinctness and reuse rules**
     - **Validates: Requirements 3.2, 3.6**
 
-  - [ ]* 7.4 Write property test for Question traceability
+  - [x]* 7.4 Write property test for Question traceability
     - **Property 10: Every generated Question is traceable to its source**
     - **Validates: Requirements 5.1, 5.2, 5.3, 5.4**
 
-  - [ ] 7.5 Implement `getOrCreateDailyChallenge`
+  - [x] 7.5 Implement `getOrCreateDailyChallenge`
     - Read `storage.getDailyChallenge(dateKey)`; if present return unchanged; otherwise call `selectQuestions`, wrap in a `DailyChallenge`, persist via `storage.putDailyChallenge`, and return it
     - Compute `dateKey` from the device's local date (`getFullYear/getMonth/getDate`, not UTC)
     - _Requirements: 3.1, 3.5, 9.5; Design: Domain: generateDailyChallenge, Calendar day determination_
 
-  - [ ]* 7.6 Write property test for idempotent reopening
+  - [x]* 7.6 Write property test for idempotent reopening
     - **Property 7: Reopening the Challenge_View is idempotent**
     - **Validates: Requirements 3.5**
 

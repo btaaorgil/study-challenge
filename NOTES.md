@@ -41,36 +41,48 @@ Log of Kiro features used during this project, for the final submission form.
 
 ## Property-Based Testing
 
-### Lesson 4: Property-Based Tests - Lesson validation & selection
-- Implemented `validateLesson` and `selectActiveLesson` in `src/domain/lesson.ts` (Tasks 4.1, 4.4),
-  plus the data model types in `src/domain/types.ts` (Task 3.1).
-- Wrote property-based tests with `fast-check` in `src/domain/lesson.property.test.ts`, covering
-  design.md's Property 1, 2, and 4 (200 runs each):
+### Lesson 4: Property-Based Testing
+- **Lesson validation & selection** - Implemented `validateLesson` and `selectActiveLesson` in
+  `src/domain/lesson.ts` (Tasks 4.1, 4.4), plus the data model types in `src/domain/types.ts`
+  (Task 3.1). Property-based tests in `src/domain/lesson.property.test.ts` (200 runs each):
   - **Property 1** - a Lesson is section-count-valid if and only if it has exactly 4 sections.
   - **Property 2** - a Lesson_Section is field-valid if and only if its trimmed title (1-100),
     trimmed explanation (1-2000), and concept count (1-20) are all in bounds, probed with
     empty/whitespace/boundary/over-length generated strings.
   - **Property 4** - `selectActiveLesson` returns the Sample_Lesson if and only if no non-sample
     stored lesson validates; otherwise it returns a lesson that does validate.
-- All 9 tests (2 smoke + 7 property/example tests) pass; build and `npm audit` stayed clean.
 
-### Lesson 5: Property-Based Tests - Storage_Layer
-- Implemented `src/storage/db.ts` (Task 5): IndexedDB schema v1 (`lessons`, `dailyChallenges`,
-  `attempts` stores with `by_dateKey`/`by_question` indexes), typed CRUD API, and a transparent
-  in-memory fallback adapter for `unsupported`/`blocked`/`quota-exceeded` conditions.
-- Wrote property-based tests with `fast-check` + `fake-indexeddb` in `src/storage/db.property.test.ts`:
+- **Storage_Layer** - Implemented `src/storage/db.ts` (Task 5): IndexedDB schema v1 (`lessons`,
+  `dailyChallenges`, `attempts` stores with `by_dateKey`/`by_question` indexes), typed CRUD API,
+  and a transparent in-memory fallback adapter for `unsupported`/`blocked`/`quota-exceeded`
+  conditions. Property-based tests in `src/storage/db.property.test.ts`:
   - **Property 3** - authored section order survives a full storage round-trip (50 runs).
   - **Property 15** - a randomly generated Daily_Challenge + its Attempts read back deep-equal to
     what was written for the same dateKey (50 runs).
-- Wrote unit tests (`db.test.ts`) simulating all three degraded conditions (unsupported, blocked,
-  quota-exceeded-on-open, quota-exceeded-on-write) using controlled fake IDBOpenDBRequest objects
-  and a patched fake-indexeddb connection -- each confirms the layer degrades gracefully and the
-  caller's operation still succeeds via the in-memory adapter. Also verified write-then-read
-  ordering (a `put` only resolves once its transaction durably commits).
-- Wrote a grep-based lint test (`singleAccessPoint.test.ts`) asserting no module other than
-  `src/storage/db.ts` references the global `indexedDB`, enforcing the single-access-point rule
-  from `.kiro/steering/storage.md`.
-- All 18 tests pass (9 from Lesson 4 + 9 new); build and `npm audit` stayed clean (0 vulnerabilities).
+  - Also added unit tests (`db.test.ts`) simulating all three degraded conditions (unsupported,
+    blocked, quota-exceeded-on-open, quota-exceeded-on-write), confirming graceful fallback to the
+    in-memory adapter, plus write-then-read ordering checks, and a grep-based lint test
+    (`singleAccessPoint.test.ts`) enforcing the single-IndexedDB-access-point rule from
+    `.kiro/steering/storage.md`.
+
+- **Daily_Challenge generation** - Implemented `selectQuestions` (deterministic, seeded PRNG via
+  `src/domain/prng.ts`'s mulberry32 -- no `Math.random()` anywhere) and `getOrCreateDailyChallenge`
+  in `src/domain/challenge.ts` (Tasks 7.1, 7.5). Property-based tests in
+  `src/domain/challenge.property.test.ts`:
+  - **Property 5** - every generated Daily_Challenge has exactly 5 questions, each with exactly 4
+    options and exactly 1 correct option (100 runs).
+  - **Property 6** - concepts are used distinctly when a lesson has >=5 usable concepts, and
+    reused (round-robin) when it has fewer, while always producing exactly 5 questions (100 runs).
+  - **Property 7** - calling `getOrCreateDailyChallenge` twice for the same day returns a
+    deep-equal challenge both times (idempotent reopen); `selectQuestions` alone is also
+    deterministic for the same lesson/seed (30 + 100 runs).
+  - **Property 10** - every generated Question has a non-empty explanation/sourceQuote, a
+    sourceQuote that's an exact substring of its source concept or section text, a correctly
+    linked sectionId, and never draws from a concept lacking a derivable explanation/quote
+    (100 + 50 runs).
+
+- All 32 tests pass across tasks 3-5 and 7 combined; build and `npm audit` stayed clean throughout
+  (0 vulnerabilities).
 
 ## Vibe / Agentic coding
 - (not yet used)
