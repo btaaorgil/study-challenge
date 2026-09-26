@@ -112,8 +112,21 @@ function buildTermPool(all: PooledConcept[]): TermPool {
   const raw = all.map(({ concept, section }) => ({ section, terms: extractTerms(concept.text) }));
 
   const properKeys = new Set<string>();
+  const capitalizedStarts = new Map<string, number>();
   for (const { terms } of raw) {
-    for (const term of terms) if (term.kind === "proper") properKeys.add(term.text.toLowerCase());
+    for (const term of terms) {
+      const key = term.text.toLowerCase();
+      if (term.kind === "proper") properKeys.add(key);
+      else if (/^[A-Z]/.test(term.text)) capitalizedStarts.set(key, (capitalizedStarts.get(key) ?? 0) + 1);
+    }
+  }
+  // A word that opens 2+ sentences and is never written in lowercase
+  // anywhere ("Venus", "Saturn") is a name, not sentence case.
+  const allText = all.map(({ concept }) => concept.text).join(" ");
+  for (const [key, count] of capitalizedStarts) {
+    if (count >= 2 && !new RegExp(`(?<![A-Za-z])${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z])`).test(allText)) {
+      properKeys.add(key);
+    }
   }
   const extracted = raw.map(({ section, terms }) => ({
     section,
