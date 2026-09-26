@@ -48,38 +48,38 @@ This plan implements the Daily Study Challenge in four stages, mirroring design.
     - **Validates: Requirements 2.3**
 
 - [ ] 5. Implement Storage_Layer (`src/storage/db.ts`)
-  - [ ] 5.1 Implement IndexedDB schema v1 and typed CRUD API
+  - [x] 5.1 Implement IndexedDB schema v1 and typed CRUD API
     - Implement `init()`, `getLesson`/`putLesson`/`listLessons`, `getDailyChallenge`/`putDailyChallenge`, `getAttempts`/`putAttempt`
     - Create object stores `lessons`, `dailyChallenges`, `attempts` (with `by_dateKey` and `by_question` indexes) via `onupgradeneeded`, guarded by `if (oldVersion < 1)` per design.md's versioning comment convention
     - Ensure each `put*` promise resolves only after its underlying transaction completes
     - _Requirements: 9.1, 9.2; Design: Storage_Layer, Schema_
 
-  - [ ]* 5.2 Write property test for section order preserved on storage round-trip
+  - [x]* 5.2 Write property test for section order preserved on storage round-trip
     - **Property 3: Section order is preserved on load**
     - **Validates: Requirements 1.3**
 
-  - [ ]* 5.3 Write property test for Storage_Layer round-tripping Daily_Challenge and Attempts
+  - [x]* 5.3 Write property test for Storage_Layer round-tripping Daily_Challenge and Attempts
     - **Property 15: Storage round-trips a Daily_Challenge and its Attempts**
     - **Validates: Requirements 9.5**
 
-  - [ ] 5.4 Implement `StorageStatus`, `getStorageStatus`, and the in-memory fallback adapter
+  - [x] 5.4 Implement `StorageStatus`, `getStorageStatus`, and the in-memory fallback adapter
     - Wrap `indexedDB.open` in a promise; map `onerror`/`onblocked`/feature-detection failure to `{ kind: "degraded", reason, message }`
     - On degraded status, swap to an in-memory `Map`-backed adapter implementing the same `StorageLayer` interface, without touching/deleting already-persisted IndexedDB records
     - _Requirements: 9.3, 9.4; Design: Storage_Layer error handling / fallback_
 
-  - [ ]* 5.5 Write unit tests for IndexedDB failure modes
+  - [x]* 5.5 Write unit tests for IndexedDB failure modes
     - Simulate `unsupported`, `blocked`, and `quota-exceeded` conditions; assert fallback status is reported and pre-existing persisted records remain untouched
     - _Requirements: 9.3, 9.4_
 
-  - [ ]* 5.6 Write unit test for write-then-read ordering
+  - [x]* 5.6 Write unit test for write-then-read ordering
     - Assert the promise returned by a `put*` call does not resolve before its transaction completes, using `fake-indexeddb`
     - _Requirements: 9.1_
 
-  - [ ]* 5.7 Write lint-style unit test enforcing single access point
+  - [x]* 5.7 Write lint-style unit test enforcing single access point
     - Grep-based test asserting no module other than `src/storage/db.ts` references the global `indexedDB`
     - _Requirements: 9.2_
 
-- [ ] 6. Checkpoint - ensure Lesson and Storage_Layer tests pass
+- [x] 6. Checkpoint - ensure Lesson and Storage_Layer tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 7. Implement Daily_Challenge generation

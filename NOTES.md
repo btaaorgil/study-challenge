@@ -54,6 +54,24 @@ Log of Kiro features used during this project, for the final submission form.
     stored lesson validates; otherwise it returns a lesson that does validate.
 - All 9 tests (2 smoke + 7 property/example tests) pass; build and `npm audit` stayed clean.
 
+### Lesson 5: Property-Based Tests - Storage_Layer
+- Implemented `src/storage/db.ts` (Task 5): IndexedDB schema v1 (`lessons`, `dailyChallenges`,
+  `attempts` stores with `by_dateKey`/`by_question` indexes), typed CRUD API, and a transparent
+  in-memory fallback adapter for `unsupported`/`blocked`/`quota-exceeded` conditions.
+- Wrote property-based tests with `fast-check` + `fake-indexeddb` in `src/storage/db.property.test.ts`:
+  - **Property 3** - authored section order survives a full storage round-trip (50 runs).
+  - **Property 15** - a randomly generated Daily_Challenge + its Attempts read back deep-equal to
+    what was written for the same dateKey (50 runs).
+- Wrote unit tests (`db.test.ts`) simulating all three degraded conditions (unsupported, blocked,
+  quota-exceeded-on-open, quota-exceeded-on-write) using controlled fake IDBOpenDBRequest objects
+  and a patched fake-indexeddb connection -- each confirms the layer degrades gracefully and the
+  caller's operation still succeeds via the in-memory adapter. Also verified write-then-read
+  ordering (a `put` only resolves once its transaction durably commits).
+- Wrote a grep-based lint test (`singleAccessPoint.test.ts`) asserting no module other than
+  `src/storage/db.ts` references the global `indexedDB`, enforcing the single-access-point rule
+  from `.kiro/steering/storage.md`.
+- All 18 tests pass (9 from Lesson 4 + 9 new); build and `npm audit` stayed clean (0 vulnerabilities).
+
 ## Vibe / Agentic coding
 - (not yet used)
 
