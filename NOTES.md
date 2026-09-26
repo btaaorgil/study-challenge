@@ -81,8 +81,32 @@ Log of Kiro features used during this project, for the final submission form.
     linked sectionId, and never draws from a concept lacking a derivable explanation/quote
     (100 + 50 runs).
 
-- All 32 tests pass across tasks 3-5 and 7 combined; build and `npm audit` stayed clean throughout
-  (0 vulnerabilities).
+- **Grading_Engine** - Implemented `gradeAttempt` (pure, synchronous) and `submitAnswer`
+  (orchestration wrapper: rejects invalid/missing options, rejects resubmission on an
+  already-answered question, otherwise grades and builds an `Attempt`) in `src/domain/grading.ts`
+  (Tasks 8.1, 8.3). Property-based tests in `src/domain/grading.property.test.ts`:
+  - **Property 8** - grading is synchronous (no Promise) and `isCorrect` always matches
+    `submittedOptionId === correctOptionId`, with `correctOptionId` reported regardless of outcome
+    (200 + 200 runs).
+  - **Property 9** - resubmitting to an already-answered question returns the prior result
+    unchanged, records nothing new, and never mutates the prior Attempt (200 + 100 runs).
+  - Also added unit tests (Task 8.5) for undefined/blank/unrecognized option ids, all correctly
+    rejected with `{ ok: false, error: { kind: "invalid-option" } }` and no Attempt recorded.
+
+- **Scoring_Engine** - Implemented `calculateScore` (pure: filters to in-scope same-day attempts,
+  takes the earliest attempt per question, counts correct first-attempts, rounds and clamps to
+  0-100) in `src/domain/scoring.ts` (Task 9.1), matching `.kiro/steering/scoring.md`'s rules.
+  Property-based tests in `src/domain/scoring.property.test.ts`:
+  - **Property 11** - score depends only on each question's chronologically-first same-day,
+    in-scope attempt, is unaffected by array order, and ignores out-of-scope attempts entirely
+    (150 + 100 runs, plus 2 targeted first-vs-later-attempt examples).
+  - **Property 12** - `calculateScore` never mutates the Attempts array and returns a plain number,
+    not a Promise (150 runs).
+  - **Property 13** - score is always an integer clamped to [0, 100], even under adversarial
+    attempt data (duplicate ids, extreme timestamps, garbage option ids) (200 + 2 boundary runs).
+
+- All 42 tests pass across tasks 3-5 and 7-9 combined (checkpoint 10); build and `npm audit`
+  stayed clean throughout (0 vulnerabilities).
 
 ## Vibe / Agentic coding
 - (not yet used)

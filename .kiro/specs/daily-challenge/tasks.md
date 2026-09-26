@@ -111,47 +111,47 @@ This plan implements the Daily Study Challenge in four stages, mirroring design.
     - **Property 7: Reopening the Challenge_View is idempotent**
     - **Validates: Requirements 3.5**
 
-- [ ] 8. Implement Grading_Engine (`src/domain/grading.ts`)
-  - [ ] 8.1 Implement `gradeAttempt`
+- [x] 8. Implement Grading_Engine (`src/domain/grading.ts`)
+  - [x] 8.1 Implement `gradeAttempt`
     - Pure, synchronous: given any of a question's 4 option ids, return `isCorrect`, `correctOptionId`, and the correct option's `explanation`/`sourceQuote`
     - _Requirements: 4.1, 4.2; Design: Grading_Engine_
 
-  - [ ]* 8.2 Write property test for synchronous, correct grading
+  - [x]* 8.2 Write property test for synchronous, correct grading
     - **Property 8: Grading is synchronous and reports correctness against the true correct option**
     - **Validates: Requirements 4.1, 4.2**
 
-  - [ ] 8.3 Implement `submitAnswer`
+  - [x] 8.3 Implement `submitAnswer`
     - Reject `undefined`/blank/unrecognized option ids without grading or recording anything
     - Reject a second submission for a question with an existing same-day `Attempt`, returning the previously computed result unchanged
     - Otherwise grade, build an `Attempt` (with `submittedAt`), and return it for the caller to persist
     - _Requirements: 4.3, 4.4; Design: Grading_Engine_
 
-  - [ ]* 8.4 Write property test for rejecting further submissions on answered Questions
+  - [x]* 8.4 Write property test for rejecting further submissions on answered Questions
     - **Property 9: An answered Question rejects further submissions**
     - **Validates: Requirements 4.3**
 
-  - [ ]* 8.5 Write unit test for invalid/missing option submissions
+  - [x]* 8.5 Write unit test for invalid/missing option submissions
     - Assert `submitAnswer` returns `{ ok: false, error: { kind: "invalid-option" } }` and records no Attempt for undefined, blank, or unrecognized option ids
     - _Requirements: 4.4_
 
-- [ ] 9. Implement Scoring_Engine (`src/domain/scoring.ts`)
-  - [ ] 9.1 Implement `calculateScore`
+- [x] 9. Implement Scoring_Engine (`src/domain/scoring.ts`)
+  - [x] 9.1 Implement `calculateScore`
     - Filter attempts to the challenge's `dateKey` and question ids; group by `questionId` and take the earliest `submittedAt` per group (stable tiebreak); count correct first-attempts; compute `round(correct/total*100)` clamped to 0-100; do not mutate the input array
     - _Requirements: 6.1, 6.2, 6.3, 7.1, 7.2, 7.3, 8.1; Design: Scoring_Engine_
 
-  - [ ]* 9.2 Write property test for first-attempt-only, order-independent scoring
+  - [x]* 9.2 Write property test for first-attempt-only, order-independent scoring
     - **Property 11: Score reflects only first, in-scope attempts, order-independently**
     - **Validates: Requirements 6.1, 6.3, 7.1, 7.2, 7.3**
 
-  - [ ]* 9.3 Write property test for scoring purity
+  - [x]* 9.3 Write property test for scoring purity
     - **Property 12: Scoring is pure**
     - **Validates: Requirements 6.2**
 
-  - [ ]* 9.4 Write property test for score clamping
+  - [x]* 9.4 Write property test for score clamping
     - **Property 13: Score is always clamped to 0-100**
     - **Validates: Requirements 8.1**
 
-- [ ] 10. Checkpoint - ensure all domain-layer tests pass
+- [x] 10. Checkpoint - ensure all domain-layer tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 11. Implement Challenge_View shell and data loading
